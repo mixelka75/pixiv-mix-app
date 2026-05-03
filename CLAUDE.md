@@ -10,7 +10,7 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
 export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$ANDROID_HOME/platform-tools:$PATH
 ```
-`gradle.properties` already pins `org.gradle.java.home`, so the wrapper itself uses JDK 17 even without `JAVA_HOME`. `local.properties` carries `sdk.dir` and is git-ignored.
+`JAVA_HOME` must be set — the project's `gradle.properties` does not pin a path (so CI works on any runner). For machine-specific overrides put `org.gradle.java.home=...` in `~/.gradle/gradle.properties` instead. `local.properties` carries `sdk.dir` and is git-ignored.
 
 **Pin: AGP 8.5.2 is the max compatible with Kotlin 2.0.21** — bumping AGP will produce a Kotlin/AGP compatibility warning and may break KMP builds. Same goes for Coil 3 ↔ Ktor 3 versions in `gradle/libs.versions.toml` — keep them moving together.
 
