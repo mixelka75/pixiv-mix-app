@@ -5,126 +5,68 @@
 
 <p align="center"><a href="README.md">English</a> · <strong>Русский</strong></p>
 
-Нативный Android- и desktop-клиент для pixiv поверх AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Опционально — собственный nginx-прокси для тех, кто хочет жирный канал без VPN или у кого pixiv режется ISP.
+<p align="center">
+Нативный клиент pixiv для Android, Windows, macOS и Linux.<br/>
+Без рекламы, без обёрток над WebView, без Electron — только твоя лента.
+</p>
+
+<p align="center">
+  <a href="https://github.com/mixelka75/pixiv-mix-app/releases/latest"><strong>↓ Скачать последний релиз</strong></a>
+</p>
 
 ---
 
-## Структура проекта
+## Возможности
 
-```
-.
-├── composeApp/             точка входа Android (MainActivity, Application, manifest)
-├── shared/                 KMP-модуль — domain, data, network, UI, экраны
-└── deploy/
-    └── nginx/
-        └── pixmix.mxl.wtf.conf    самодостаточный шаблон reverse-прокси
-```
-
-## Сборка приложения
-
-Нужно: JDK 17. Для Android дополнительно — SDK с `platforms;android-34` и `build-tools;34.0.0`.
-
-### Android
-
-```bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-export ANDROID_HOME=$HOME/Android/Sdk
-./gradlew :composeApp:assembleDebug
-adb install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk
-```
-
-App ID (debug): `wtf.mxl.pixmix.debug`. Запуск:
-```bash
-adb shell am start -n wtf.mxl.pixmix.debug/wtf.mxl.pixmix.MainActivity
-```
-
-### Desktop (Linux / macOS / Windows)
-
-```bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-./gradlew :composeApp:run                  # запуск из исходников
-./gradlew :composeApp:packageDeb           # собрать .deb (Linux)
-./gradlew :composeApp:packageAppImage      # AppImage runtime-бандл
-```
-
-Десктопный UI адаптивный: на ширине ≥720dp вместо bottom-nav используется
-NavigationRail слева, лента автоматически центрируется и ограничена по ширине,
-сетка перекладывает колонки под размер окна.
-
-WebView-логин на десктопе не работает (потребовался бы CEF/JavaFX-WebView). Вместо
-этого вводи **PHPSESSID** в форме на экране входа — приложение предложит открыть
-pixiv.net в системном браузере, оттуда скопируешь куки.
+- **Лента, сетка, рейтинг, поиск по тегам** — листай, как удобно.
+- **Многостраничные работы листаются прямо в карточке** — без лишних нажатий.
+- **Адаптивный интерфейс** — мобильная навигация на маленьких окнах, десктопный sidebar на больших, сетки сами подстраивают число колонок.
+- **Быстрая подгрузка картинок** — полный размер прелоадится рядом с экраном, прокрутка не лагает.
+- **Лайки и закладки** — работают с твоим аккаунтом pixiv.
+- **Опциональный свой прокси** — если ISP режет pixiv. См. [раздел про прокси](#свой-прокси-опционально) ниже.
 
 ---
 
-## Развёртывание прокси
+## Установка
 
-Прокси **опционален**. По умолчанию приложение ходит к pixiv напрямую. Включается в **Settings → Use proxy**, если хочешь гнать трафик через свой сервер (быстрее VPN, обходит блокировки на уровне ISP).
+Качай файл под свою платформу из [последнего релиза](https://github.com/mixelka75/pixiv-mix-app/releases/latest):
 
-### Что нужно
-- VPS, с которого pixiv доступен (Hetzner Helsinki/Falkenstein работает; обычная российская VPS — **не** работает без upstream-туннеля).
-- Свободные порты 80/443 (без других веб-серверов на хосте).
-- DNS A-запись на твоём поддомене (например `pixmix.твой-домен`), указывающая на IP VPS. Проверь через `dig pixmix.твой-домен +short`.
+| Платформа | Файл | Что сделать |
+|---|---|---|
+| **Android** | `PixMix-release.apk` | Скачать на телефон, тапнуть. Возможно понадобится *Разрешить установку из неизвестных источников*. |
+| **Windows** | `PixMix-0.1.0.msi` | Двойной клик, дальше как обычный установщик. |
+| **macOS** | `PixMix-1.0.0.dmg` | Открыть, перетащить PixMix.app в Applications. Первый запуск: правый клик → *Открыть* (предупреждение о неподписанном приложении). |
+| **Linux (.deb)** | `pixmix_0.1.0-1_amd64.deb` | `sudo apt install ./pixmix_*.deb` — Debian/Ubuntu/Mint/Pop. |
+| **Linux (AppImage)** | `PixMix-x86_64.AppImage` | `chmod +x PixMix-x86_64.AppImage && ./PixMix-x86_64.AppImage` — любой дистрибутив. |
 
-### Установка одной пачкой (Debian/Ubuntu)
+---
 
-Зайди по SSH под root (или через sudo) и выполняй:
+## Первый запуск
 
-```bash
-# 1. ставим всё разом
-apt update && apt install -y nginx certbot python3-certbot-nginx ufw curl ssl-cert
+Логин идёт через **твой аккаунт pixiv** — PixMix не видит твоих паролей, авторизация уходит напрямую на pixiv.
 
-# 2. файрвол
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
+- **Android**: нажми *Войти*, откроется встроенный браузер с формой pixiv. Логинься как обычно.
+- **Desktop**: вход через WebView блокирует Google, поэтому два варианта:
+  - вставь свой `PHPSESSID` (экран логина подскажет, как достать его на pixiv.net), или
+  - нажми *Открыть pixiv.net в браузере*, залогинься там, затем вставь куку обратно в приложение.
 
-# 3. забираем шаблон nginx из этого репо
-curl -fsSL https://raw.githubusercontent.com/mixelka75/pixiv-mix-app/main/deploy/nginx/pixmix.mxl.wtf.conf \
-  -o /etc/nginx/sites-available/pixmix.твой-домен.conf
+> **HiDPI на Linux (Hyprland/Sway)**: интерфейс мелкий? Запускай так: `PIXMIX_SCALE=2 ./PixMix-x86_64.AppImage`. На GNOME и KDE масштаб подхватывается автоматически.
 
-# 4. подменяем домен на свой (везде где встречается pixmix.mxl.wtf)
-sed -i 's|pixmix.mxl.wtf|pixmix.твой-домен|g' /etc/nginx/sites-available/pixmix.твой-домен.conf
+---
 
-# 5. генерируем длинный токен и вшиваем в конфиг
-TOKEN=$(openssl rand -hex 32) && echo "TOKEN: $TOKEN"     # сохрани!
-sed -i "s|REPLACE_ME_WITH_LONG_RANDOM_STRING|$TOKEN|" /etc/nginx/sites-available/pixmix.твой-домен.conf
+## Свой прокси (опционально)
 
-# 6. включаем сайт, проверяем синтаксис, перечитываем
-ln -sf /etc/nginx/sites-available/pixmix.твой-домен.conf /etc/nginx/sites-enabled/
-systemctl enable --now nginx
-nginx -t && systemctl reload nginx
+Если pixiv режется провайдером или просто медленный — можно гонять весь трафик через свой VPS. Обычно быстрее любого VPN, на стороне клиента нужно только вписать URL и токен. В репе лежит готовый nginx-шаблон, который ставится одной пачкой.
 
-# 7. получаем настоящий Let's Encrypt сертификат (затрёт snakeoil-пути)
-certbot --nginx -d pixmix.твой-домен --redirect --non-interactive --agree-tos -m ты@example.com
+Рецепт развёртывания: **[DEVELOPMENT.ru.md → Свой прокси](DEVELOPMENT.ru.md#свой-прокси)**.
 
-# 8. проверка — без токена должно вернуть 403, с токеном — 200/4xx от pixiv
-curl -sI "https://pixmix.твой-домен/pixiv/ajax/discovery/artworks?mode=safe&limit=1"
-curl -sI -H "X-Pixmix-Token: $TOKEN" "https://pixmix.твой-домен/pixiv/ajax/discovery/artworks?mode=safe&limit=1"
-```
+В приложении: **Settings → Use proxy** → впиши URL + токен. Сессия pixiv сохраняется при включении/выключении прокси.
 
-### Подключение приложения
+---
 
-В приложении: **Settings → Use proxy** (включить свич)
-- **Proxy base URL**: `https://pixmix.твой-домен`
-- **Proxy token**: значение `$TOKEN` из шага 5
+## Сборка из исходников / контрибьют
 
-Сессия pixiv сохраняется при переключении proxy — перелогиниваться не надо.
-
-### Подводные камни
-
-- **На VPS уже есть какой-то веб-сервер?** Если 80/443 заняты (docker-proxy, apache, другой nginx) — этот шаблон в лоб не встанет. Либо отдельный VPS под PixMix, либо вмерживай два `location` блока в свой существующий reverse-proxy.
-- **Pixiv заблокирован с VPS?** `curl -I https://www.pixiv.net/` должен вернуть `200`. Если на запросе через прокси ловишь `502` — VPS сам не может достучаться до pixiv. Бери сервер в регионе без РКН-подобных блокировок (Hetzner Helsinki/Falkenstein, OVH, Vultr Tokyo).
-- **Авто-обновление сертификата**: certbot ставит systemd-таймер (`systemctl status certbot.timer`). Больше делать ничего не нужно.
-
-### Если что-то сломалось
-
-```bash
-nginx -t                                   # синтаксис конфига
-journalctl -u nginx -n 50 --no-pager       # ошибки старта
-tail -f /var/log/nginx/error.log           # рантайм-ошибки (auth, upstream, TLS)
-adb logcat -s Ktor:V *:F                   # сетевые логи на стороне клиента
-```
+PixMix это Kotlin Multiplatform (Android + JVM desktop) на Compose Multiplatform. Тулчейн, запуск из исходников, выпуск релиза — всё описано в **[DEVELOPMENT.ru.md](DEVELOPMENT.ru.md)**.
 
 ---
 
