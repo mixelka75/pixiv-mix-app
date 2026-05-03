@@ -1,0 +1,22 @@
+.gradle/
+build/
+**/build/
+local.properties
+.idea/
+.kotlin/
+.fleet/
+*.iml
+.DS_Store
+captures/
+.cxx/
+xcuserdata/
+*.xcworkspace/
+out/
+
+# Tool/agent state
+.claude/
+*.log
+
+# Secrets / per-host config (deploy)
+deploy/**/*.local.conf
+

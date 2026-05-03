@@ -1,0 +1,324 @@
+package wtf.mxl.pixmix.shared.feature.illust
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import wtf.mxl.pixmix.shared.domain.model.IllustDetail
+import wtf.mxl.pixmix.shared.domain.model.IllustPage
+import wtf.mxl.pixmix.shared.domain.model.IllustSummary
+import wtf.mxl.pixmix.shared.domain.model.XRestrict
+import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.ui.PixivImage
+
+@Composable
+fun IllustDetailScreen(component: IllustDetailComponent, modifier: Modifier = Modifier) {
+    val state by component.state.collectAsState()
+    val layout by component.layout.collectAsState()
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(state.detail?.title ?: "Loading…", maxLines = 1) },
+                navigationIcon = {
+                    IconButton(onClick = component::back) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
+            )
+        },
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when {
+                state.loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                state.error != null -> Text(
+                    "Error: ${state.error}",
+                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                    color = MaterialTheme.colorScheme.error,
+                )
+                state.detail != null -> DetailContent(
+                    detail = state.detail!!,
+                    pages = state.pages,
+                    related = state.related,
+                    relatedLayout = layout,
+                    loadingRelated = state.loadingRelated,
+                    onPageClick = component::openViewer,
+                    onLike = component::toggleLike,
+                    onBookmark = { component.toggleBookmark(private = false) },
+                    onBookmarkPrivate = { component.toggleBookmark(private = true) },
+                    onRelatedClick = component::openIllust,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailContent(
+    detail: IllustDetail,
+    pages: List<IllustPage>,
+    related: List<IllustSummary>,
+    relatedLayout: FeedLayout,
+    loadingRelated: Boolean,
+    onPageClick: (Int) -> Unit,
+    onLike: () -> Unit,
+    onBookmark: () -> Unit,
+    onBookmarkPrivate: () -> Unit,
+    onRelatedClick: (String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+    ) {
+        itemsIndexed(pages) { index, page ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black)
+                    .clickable { onPageClick(index) },
+            ) {
+                PixivImage(
+                    url = page.regularUrl,
+                    contentDescription = detail.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(((page.height.toFloat() / page.width.coerceAtLeast(1)) * 360).dp.coerceAtMost(720.dp)),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            Spacer(Modifier.height(2.dp))
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(detail.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "by ${detail.author.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+                Spacer(Modifier.height(12.dp))
+                ActionRow(detail, onLike, onBookmark, onBookmarkPrivate)
+                Spacer(Modifier.height(12.dp))
+                StatsRow(detail)
+                if (detail.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(detail.tags) { tag ->
+                            AssistChip(onClick = {}, label = { Text("#$tag") })
+                        }
+                    }
+                }
+                if (detail.description.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(stripHtml(detail.description), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+
+        if (related.isNotEmpty() || loadingRelated) {
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        "Related",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+
+        when (relatedLayout) {
+            FeedLayout.Grid -> {
+                // Render as 3-column rows so we can stay inside the outer LazyColumn.
+                related.chunked(3).forEach { row ->
+                    item(key = "related-row-${row.firstOrNull()?.id}") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            row.forEach { illust ->
+                                Box(modifier = Modifier.weight(1f)) { RelatedCell(illust, onRelatedClick) }
+                            }
+                            repeat(3 - row.size) { Box(modifier = Modifier.weight(1f)) {} }
+                        }
+                        Spacer(Modifier.height(2.dp))
+                    }
+                }
+            }
+            FeedLayout.Feed -> {
+                items(related, key = { "related-feed-${it.id}" }) { illust ->
+                    Spacer(Modifier.height(12.dp))
+                    RelatedFeedCard(illust, onRelatedClick)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RelatedCell(illust: IllustSummary, onClick: (String) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { onClick(illust.id) },
+    ) {
+        PixivImage(url = illust.thumbnailUrl, contentDescription = illust.title, modifier = Modifier.fillMaxSize())
+        if (illust.xRestrict == XRestrict.R18) MiniBadge("R-18", Modifier.align(Alignment.TopStart))
+        if (illust.pageCount > 1) MiniBadge("${illust.pageCount}", Modifier.align(Alignment.TopEnd))
+    }
+}
+
+@Composable
+private fun RelatedFeedCard(illust: IllustSummary, onClick: (String) -> Unit) {
+    val ratio = (illust.width.toFloat() / illust.height.coerceAtLeast(1)).coerceIn(0.5f, 2.0f)
+    Column(modifier = Modifier.fillMaxWidth().clickable { onClick(illust.id) }) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(ratio)
+                .background(Color.Black),
+        ) {
+            PixivImage(
+                url = illust.thumbnailUrl,
+                contentDescription = illust.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+            if (illust.xRestrict == XRestrict.R18) MiniBadge("R-18", Modifier.align(Alignment.TopStart).padding(8.dp))
+            if (illust.pageCount > 1) MiniBadge("${illust.pageCount}", Modifier.align(Alignment.TopEnd).padding(8.dp))
+        }
+        Text(
+            illust.title.ifBlank { illust.author.name },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun MiniBadge(text: String, modifier: Modifier = Modifier) {
+    androidx.compose.material3.Surface(
+        modifier = modifier.padding(4.dp),
+        color = Color(0xCC000000),
+        shape = RoundedCornerShape(4.dp),
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
+private fun ActionRow(
+    detail: IllustDetail,
+    onLike: () -> Unit,
+    onBookmark: () -> Unit,
+    onBookmarkPrivate: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IconButton(onClick = onLike) {
+            Icon(
+                imageVector = if (detail.isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = "Like",
+                tint = if (detail.isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        IconButton(onClick = onBookmark) {
+            Icon(
+                imageVector = if (detail.isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                contentDescription = "Bookmark",
+                tint = if (detail.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        if (!detail.isBookmarked) {
+            IconButton(onClick = onBookmarkPrivate) {
+                Icon(
+                    imageVector = Icons.Filled.BookmarkBorder,
+                    contentDescription = "Private bookmark",
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsRow(detail: IllustDetail) {
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Stat("Views", detail.viewCount)
+        Stat("Likes", detail.likeCount)
+        Stat("Bookmarks", detail.bookmarkCount)
+        Stat("Comments", detail.commentCount)
+    }
+}
+
+@Composable
+private fun Stat(label: String, value: Int) {
+    Column {
+        Text(value.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+    }
+}
+
+private fun stripHtml(s: String): String =
+    s.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#x27;", "'")
+        .replace("&#39;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .trim()
