@@ -98,6 +98,8 @@ compose.desktop {
             }
             macOS {
                 iconFile.set(project.file("src/desktopMain/resources/icon.png"))
+                // jpackage rejects MAJOR=0 for .dmg; override only for macOS.
+                packageVersion = "1.0.0"
             }
             windows {
                 iconFile.set(project.file("src/desktopMain/resources/icon.png"))
