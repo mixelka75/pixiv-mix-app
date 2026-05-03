@@ -1,0 +1,147 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :composeApp:assembleDebug --no-daemon
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp composeApp/build/outputs/apk/debug/composeApp-debug.apk out/PixMix-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*.apk
+
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tasks: ':composeApp:packageDeb :composeApp:packageAppImage'
+            artifacts: |
+              composeApp/build/compose/binaries/main/deb/*.deb
+              composeApp/build/compose/binaries/main/app/PixMix
+            name: linux
+          - os: windows-latest
+            tasks: ':composeApp:packageMsi :composeApp:packageExe'
+            artifacts: |
+              composeApp/build/compose/binaries/main/msi/*.msi
+              composeApp/build/compose/binaries/main/exe/*.exe
+            name: windows
+          - os: macos-latest
+            tasks: ':composeApp:packageDmg'
+            artifacts: |
+              composeApp/build/compose/binaries/main/dmg/*.dmg
+            name: macos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        shell: bash
+        run: ./gradlew ${{ matrix.tasks }} --no-daemon
+
+      # Real .AppImage (Compose only emits a directory)
+      - name: Pack AppImage
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libfuse2
+          curl -L -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          APPDIR=/tmp/PixMix.AppDir
+          rm -rf "$APPDIR"
+          mkdir -p "$APPDIR/usr"
+          cp -r composeApp/build/compose/binaries/main/app/PixMix/. "$APPDIR/usr/"
+          cp composeApp/src/desktopMain/resources/icon.png "$APPDIR/pixmix.png"
+          cat > "$APPDIR/pixmix.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=PixMix
+          Exec=PixMix
+          Icon=pixmix
+          Categories=Graphics;
+          Terminal=false
+          EOF
+          cat > "$APPDIR/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          JVM_OPTS=""
+          SCALE="${PIXMIX_SCALE:-${GDK_SCALE:-}}"
+          if [ -n "$SCALE" ]; then
+              JVM_OPTS="-J-Dsun.java2d.uiScale=$SCALE -J-Dsun.java2d.uiScale.enabled=true"
+          fi
+          exec "$HERE/usr/bin/PixMix" $JVM_OPTS -J-Dawt.useSystemAAFontSettings=lcd "$@"
+          EOF
+          chmod +x "$APPDIR/AppRun"
+          ARCH=x86_64 /tmp/appimagetool "$APPDIR" composeApp/build/compose/binaries/main/PixMix-x86_64.AppImage
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          set -e
+          mkdir -p out
+          case "${{ matrix.name }}" in
+            linux)
+              cp composeApp/build/compose/binaries/main/deb/*.deb out/ 2>/dev/null || true
+              cp composeApp/build/compose/binaries/main/PixMix-x86_64.AppImage out/ 2>/dev/null || true
+              ;;
+            windows)
+              cp composeApp/build/compose/binaries/main/msi/*.msi out/ 2>/dev/null || true
+              cp composeApp/build/compose/binaries/main/exe/*.exe out/ 2>/dev/null || true
+              ;;
+            macos)
+              cp composeApp/build/compose/binaries/main/dmg/*.dmg out/ 2>/dev/null || true
+              ;;
+          esac
+          ls -la out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: out/*
+
+  release:
+    name: GitHub Release
+    needs: [android, desktop]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.apk' -o -name '*.deb' -o -name '*.AppImage' -o -name '*.msi' -o -name '*.exe' -o -name '*.dmg' \) -exec cp {} release/ \;
+          ls -la release/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false

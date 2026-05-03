@@ -69,7 +69,13 @@ compose.desktop {
     application {
         mainClass = "wtf.mxl.pixmix.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            targetFormats(
+                TargetFormat.Deb,
+                TargetFormat.AppImage,
+                TargetFormat.Msi,
+                TargetFormat.Exe,
+                TargetFormat.Dmg,
+            )
             packageName = "PixMix"
             packageVersion = "0.1.0"
             linux {
