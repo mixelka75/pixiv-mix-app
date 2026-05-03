@@ -19,11 +19,43 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :composeApp:assembleDebug --no-daemon
-      - name: Rename APK
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.keystores
+            echo "$KEYSTORE_B64" | base64 -d > ~/.keystores/release.jks
+            echo "ANDROID_KEYSTORE_FILE=$HOME/.keystores/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "No keystore secret set — skipping signed release build."
+          fi
+
+      - name: Build release APK (signed if keystore present)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_FILE" ]; then
+            ./gradlew :composeApp:assembleRelease --no-daemon
+          else
+            ./gradlew :composeApp:assembleDebug --no-daemon
+          fi
+
+      - name: Stage APK
         run: |
           mkdir -p out
-          cp composeApp/build/outputs/apk/debug/composeApp-debug.apk out/PixMix-debug.apk
+          if [ -f composeApp/build/outputs/apk/release/composeApp-release.apk ]; then
+            cp composeApp/build/outputs/apk/release/composeApp-release.apk out/PixMix-release.apk
+          elif [ -f composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk ]; then
+            cp composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk out/PixMix-release-unsigned.apk
+          else
+            cp composeApp/build/outputs/apk/debug/composeApp-debug.apk out/PixMix-debug.apk
+          fi
+          ls -la out/
+
       - uses: actions/upload-artifact@v4
         with:
           name: android
