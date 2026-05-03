@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -29,6 +30,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import coil3.SingletonImageLoader
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,30 +54,72 @@ fun IllustFeed(
     onEndReached: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     state: LazyListState = rememberLazyListState(),
+    /** Hi-res prefetch radius: cards within ±N of the visible window get the
+     *  full pixiv master1200 image; the rest stay on the cheap 360px placeholder. */
+    hiResRadius: Int = 3,
 ) {
     if (onEndReached != null) {
         InfiniteScrollEffect(state = state, threshold = 4, onEndReached = onEndReached)
     }
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        state = state,
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        items(items, key = { it.id }) { illust ->
-            FeedCard(illust = illust, onClick = { onClick(illust.id) })
+
+    val hiResRange by remember(state, hiResRadius) {
+        derivedStateOf {
+            val visible = state.layoutInfo.visibleItemsInfo
+            if (visible.isEmpty()) IntRange.EMPTY
+            else (visible.first().index - hiResRadius)..(visible.last().index + hiResRadius)
+        }
+    }
+
+    // Silently warm the disk cache for the next few off-screen items below the
+    // viewport so they appear instantly when scrolled into the hi-res window.
+    val context = LocalPlatformContext.current
+    val imageLoader = remember(context) { SingletonImageLoader.get(context) }
+    val prefetchRange by remember(state, hiResRadius) {
+        derivedStateOf {
+            val visible = state.layoutInfo.visibleItemsInfo
+            if (visible.isEmpty()) IntRange.EMPTY
+            else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 5)
+        }
+    }
+    LaunchedEffect(prefetchRange, items) {
+        prefetchRange.forEach { idx ->
+            if (idx in items.indices) {
+                val url = items[idx].thumbnailUrl.toMasterPreviewUrl()
+                imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+            }
+        }
+    }
+
+    // On wide screens (desktop, tablets) cap the feed width so cards don't stretch
+    // across half a monitor. Centered, max 720dp — close to phone-portrait reading width.
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .widthIn(max = 720.dp),
+            state = state,
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            itemsIndexed(items, key = { _, it -> it.id }) { index, illust ->
+                FeedCard(
+                    illust = illust,
+                    loadFullRes = index in hiResRange,
+                    onClick = { onClick(illust.id) },
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun FeedCard(illust: IllustSummary, onClick: () -> Unit) {
+private fun FeedCard(illust: IllustSummary, loadFullRes: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
-        FeedImageBlock(illust = illust)
+        FeedImageBlock(illust = illust, loadFullRes = loadFullRes)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,7 +160,7 @@ private fun FeedCard(illust: IllustSummary, onClick: () -> Unit) {
 }
 
 @Composable
-private fun FeedImageBlock(illust: IllustSummary) {
+private fun FeedImageBlock(illust: IllustSummary, loadFullRes: Boolean) {
     val ratio = (illust.width.toFloat() / illust.height.coerceAtLeast(1))
         .coerceIn(0.6f, 1.6f)
 
@@ -129,11 +175,14 @@ private fun FeedImageBlock(illust: IllustSummary) {
                 placeholderUrl = illust.thumbnailUrl.toSmallSquareUrl(),
                 fullUrl = illust.thumbnailUrl.toMasterPreviewUrl(),
                 contentDescription = illust.title,
+                loadFullRes = loadFullRes,
             )
             Badges(illust = illust, modifier = Modifier.fillMaxSize())
         }
     } else {
         // Multi-page: VK-style horizontal swipe between pages of the same post.
+        // HorizontalPager itself only renders the current ± neighbouring pages,
+        // so non-current pages won't even fetch a placeholder.
         val pagerState = rememberPagerState(pageCount = { illust.pageCount })
         Box(modifier = imageMod) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { i ->
@@ -141,6 +190,7 @@ private fun FeedImageBlock(illust: IllustSummary) {
                     placeholderUrl = illust.thumbnailUrl.toSmallSquareUrl(i),
                     fullUrl = illust.thumbnailUrl.toMasterPreviewUrl(pageIndex = i),
                     contentDescription = illust.title,
+                    loadFullRes = loadFullRes && i == pagerState.currentPage,
                 )
             }
             Badges(illust = illust, modifier = Modifier.fillMaxSize())

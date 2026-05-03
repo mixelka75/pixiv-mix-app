@@ -1,5 +1,8 @@
 package wtf.mxl.pixmix.shared.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class IllustDetail(
     val id: String,
     val title: String,
@@ -24,6 +27,7 @@ data class IllustDetail(
     val bookmarkId: String?,
 )
 
+@Immutable
 data class IllustPage(
     val regularUrl: String,
     val originalUrl: String,

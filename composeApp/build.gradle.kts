@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -9,6 +11,7 @@ kotlin {
     jvmToolchain(17)
 
     androidTarget()
+    jvm("desktop")
 
     sourceSets {
         commonMain.dependencies {
@@ -24,6 +27,12 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.lifecycle.runtime.ktx)
             implementation(libs.koin.android)
+        }
+
+        val desktopMain by getting
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutines.swing)
         }
     }
 }
@@ -53,5 +62,16 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "wtf.mxl.pixmix.MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            packageName = "PixMix"
+            packageVersion = "0.1.0"
+        }
     }
 }

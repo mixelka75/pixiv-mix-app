@@ -10,6 +10,7 @@ kotlin {
     jvmToolchain(17)
 
     androidTarget()
+    jvm("desktop")
 
     sourceSets.all {
         languageSettings.optIn("androidx.compose.material3.ExperimentalMaterial3Api")
@@ -56,6 +57,13 @@ kotlin {
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.commons.compress)
             implementation(libs.telephoto.zoomable.image.coil3)
+        }
+
+        val desktopMain by getting
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.kotlinx.coroutines.swing)
         }
     }
 }

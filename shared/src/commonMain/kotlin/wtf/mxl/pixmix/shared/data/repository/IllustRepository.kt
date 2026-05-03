@@ -12,19 +12,19 @@ class IllustRepository(
     private val csrf: CsrfTokenProvider,
 ) {
 
-    suspend fun detail(id: String): Result<IllustDetail> = runCatching {
+    suspend fun detail(id: String): Result<IllustDetail> = wtf.mxl.pixmix.shared.util.runCoroutineCatching {
         val env = api.illust(id)
         if (env.error || env.body == null) error(env.message.ifBlank { "illust not found" })
         env.body.toDomain()
     }
 
-    suspend fun pages(id: String): Result<List<IllustPage>> = runCatching {
+    suspend fun pages(id: String): Result<List<IllustPage>> = wtf.mxl.pixmix.shared.util.runCoroutineCatching {
         val env = api.illustPages(id)
         if (env.error || env.body == null) error(env.message.ifBlank { "no pages" })
         env.body.map { it.toDomain() }
     }
 
-    suspend fun related(id: String, limit: Int = 18): Result<List<IllustSummary>> = runCatching {
+    suspend fun related(id: String, limit: Int = 18): Result<List<IllustSummary>> = wtf.mxl.pixmix.shared.util.runCoroutineCatching {
         val env = api.recommendInit(id, limit = limit)
         if (env.error || env.body == null) error(env.message.ifBlank { "no related" })
         env.body.illusts.map { it.toDomain() }
@@ -51,9 +51,11 @@ class IllustRepository(
     private inline fun <T> withCsrfRetry(block: () -> T): Result<T> {
         return try {
             Result.success(block())
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
         } catch (first: Throwable) {
             csrf.invalidate()
-            runCatching(block)
+            wtf.mxl.pixmix.shared.util.runCoroutineCatching(block)
         }
     }
 }

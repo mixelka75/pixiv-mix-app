@@ -1,8 +1,11 @@
 package wtf.mxl.pixmix.shared.domain.model
 
+import androidx.compose.runtime.Immutable
+
 enum class IllustKind { Illust, Manga, Ugoira }
 enum class XRestrict { Safe, R18, R18G }
 
+@Immutable
 data class IllustSummary(
     val id: String,
     val title: String,
@@ -17,6 +20,7 @@ data class IllustSummary(
     val isMasked: Boolean,
 )
 
+@Immutable
 data class AuthorSummary(
     val id: String,
     val name: String,

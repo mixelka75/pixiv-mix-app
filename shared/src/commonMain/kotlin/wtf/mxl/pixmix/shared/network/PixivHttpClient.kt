@@ -109,6 +109,7 @@ private fun applyProxyRewrite(request: HttpRequestBuilder, cfg: ProxyConfig) {
         else -> return // leave non-pixiv URLs alone
     }
     val proxyUrl = runCatching { Url(cfg.baseUrl) }.getOrNull() ?: return
+    if (proxyUrl.host.isBlank() || proxyUrl.host.equals("localhost", ignoreCase = true)) return
     request.url.protocol = proxyUrl.protocol
     request.url.host = proxyUrl.host
     request.url.port = if (proxyUrl.port == 0) proxyUrl.protocol.defaultPort else proxyUrl.port

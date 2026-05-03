@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import wtf.mxl.pixmix.shared.domain.model.IllustSummary
@@ -37,7 +38,7 @@ import wtf.mxl.pixmix.shared.domain.model.XRestrict
 fun IllustGrid(
     items: List<IllustSummary>,
     modifier: Modifier = Modifier,
-    columns: Int = 3,
+    minCellSize: Dp = 140.dp,
     onClick: (String) -> Unit,
     onEndReached: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(2.dp),
@@ -47,7 +48,9 @@ fun IllustGrid(
         GridInfiniteScrollEffect(state = state, threshold = 6, onEndReached = onEndReached)
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(columns),
+        // Adaptive: number of columns scales with available width — looks right on
+        // both phone (3) and desktop window (5–8 depending on size).
+        columns = GridCells.Adaptive(minSize = minCellSize),
         modifier = modifier.fillMaxSize(),
         state = state,
         contentPadding = contentPadding,

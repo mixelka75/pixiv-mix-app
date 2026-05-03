@@ -19,7 +19,9 @@ Native Android client for pixiv built on top of the AJAX/web API. Kotlin Multipl
 
 ## Build the app
 
-Prereqs: JDK 17, Android SDK with `platforms;android-34` and `build-tools;34.0.0`.
+Prereqs: JDK 17. For Android, also Android SDK with `platforms;android-34` and `build-tools;34.0.0`.
+
+### Android
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
@@ -32,6 +34,22 @@ App ID (debug build): `wtf.mxl.pixmix.debug`. Launch:
 ```bash
 adb shell am start -n wtf.mxl.pixmix.debug/wtf.mxl.pixmix.MainActivity
 ```
+
+### Desktop (Linux / macOS / Windows)
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+./gradlew :composeApp:run                  # run from sources
+./gradlew :composeApp:packageDeb           # build a .deb (Linux)
+./gradlew :composeApp:packageAppImage      # AppImage runtime bundle
+```
+
+The desktop UI is adaptive: a `NavigationRail` shows on screens ≥720dp wide, the
+feed auto-centers with a max width, and image grids scale columns to window width.
+
+WebView-based login isn't available on desktop (would require shipping CEF or
+JavaFX). Use the **PHPSESSID** field on the login screen — the app will offer to
+open pixiv.net in your default browser so you can grab the cookie.
 
 ---
 

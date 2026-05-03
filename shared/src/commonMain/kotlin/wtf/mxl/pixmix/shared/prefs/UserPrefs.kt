@@ -32,9 +32,19 @@ class UserPrefs(private val settings: Settings) {
     }
 
     fun setProxyBaseUrl(url: String) {
-        val trimmed = url.trim().trimEnd('/')
-        settings.putString(KEY_PROXY_BASE, trimmed)
-        _proxy.value = _proxy.value.copy(baseUrl = trimmed)
+        val normalized = normalizeBaseUrl(url)
+        settings.putString(KEY_PROXY_BASE, normalized)
+        _proxy.value = _proxy.value.copy(baseUrl = normalized)
+    }
+
+    private fun normalizeBaseUrl(url: String): String {
+        val cleaned = url.trim().trimEnd('/')
+        return when {
+            cleaned.isBlank() -> ""
+            cleaned.startsWith("http://", ignoreCase = true) -> cleaned
+            cleaned.startsWith("https://", ignoreCase = true) -> cleaned
+            else -> "https://$cleaned"
+        }
     }
 
     fun setProxyToken(token: String) {
@@ -49,7 +59,7 @@ class UserPrefs(private val settings: Settings) {
 
     private fun loadProxy(): ProxyConfig = ProxyConfig(
         enabled = settings.getBoolean(KEY_PROXY_ENABLED, false),
-        baseUrl = settings.getString(KEY_PROXY_BASE, ""),
+        baseUrl = normalizeBaseUrl(settings.getString(KEY_PROXY_BASE, "")),
         token = settings.getString(KEY_PROXY_TOKEN, ""),
     )
 

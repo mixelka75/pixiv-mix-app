@@ -19,7 +19,9 @@
 
 ## Сборка приложения
 
-Нужно: JDK 17, Android SDK с `platforms;android-34` и `build-tools;34.0.0`.
+Нужно: JDK 17. Для Android дополнительно — SDK с `platforms;android-34` и `build-tools;34.0.0`.
+
+### Android
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
@@ -32,6 +34,23 @@ App ID (debug): `wtf.mxl.pixmix.debug`. Запуск:
 ```bash
 adb shell am start -n wtf.mxl.pixmix.debug/wtf.mxl.pixmix.MainActivity
 ```
+
+### Desktop (Linux / macOS / Windows)
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+./gradlew :composeApp:run                  # запуск из исходников
+./gradlew :composeApp:packageDeb           # собрать .deb (Linux)
+./gradlew :composeApp:packageAppImage      # AppImage runtime-бандл
+```
+
+Десктопный UI адаптивный: на ширине ≥720dp вместо bottom-nav используется
+NavigationRail слева, лента автоматически центрируется и ограничена по ширине,
+сетка перекладывает колонки под размер окна.
+
+WebView-логин на десктопе не работает (потребовался бы CEF/JavaFX-WebView). Вместо
+этого вводи **PHPSESSID** в форме на экране входа — приложение предложит открыть
+pixiv.net в системном браузере, оттуда скопируешь куки.
 
 ---
 

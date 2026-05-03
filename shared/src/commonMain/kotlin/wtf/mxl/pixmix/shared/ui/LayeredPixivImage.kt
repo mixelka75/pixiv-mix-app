@@ -19,19 +19,25 @@ fun LayeredPixivImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    /** When false, the heavier full-res request is skipped — only the small
+     *  placeholder is rendered. Used by feed views to avoid eagerly fetching
+     *  hi-res for cards far from the viewport. */
+    loadFullRes: Boolean = true,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         AsyncImage(
             model = placeholderUrl,
-            contentDescription = null,
+            contentDescription = if (loadFullRes) null else contentDescription,
             modifier = Modifier.fillMaxSize(),
             contentScale = contentScale,
         )
-        AsyncImage(
-            model = fullUrl,
-            contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = contentScale,
-        )
+        if (loadFullRes) {
+            AsyncImage(
+                model = fullUrl,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+            )
+        }
     }
 }

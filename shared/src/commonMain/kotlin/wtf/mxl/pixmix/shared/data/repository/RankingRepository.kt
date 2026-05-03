@@ -14,7 +14,7 @@ class RankingRepository(private val api: PixivAjaxApi) {
         content: String = "all",
         date: String? = null,
         page: Int = 1,
-    ): Result<List<IllustSummary>> = runCatching {
+    ): Result<List<IllustSummary>> = wtf.mxl.pixmix.shared.util.runCoroutineCatching {
         api.ranking(mode = mode, content = content, date = date, page = page)
             .contents.map { it.toSummary() }
     }
