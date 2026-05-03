@@ -1,5 +1,7 @@
 # PixMix
 
+> **English** · [Русский](README.ru.md)
+
 Native Android client for pixiv built on top of the AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Optional self-hosted reverse proxy for users behind ISP-level pixiv blocks or wanting a fat upstream pipe.
 
 ---
