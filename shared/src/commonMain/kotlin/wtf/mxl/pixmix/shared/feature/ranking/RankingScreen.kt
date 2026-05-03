@@ -3,6 +3,7 @@ package wtf.mxl.pixmix.shared.feature.ranking
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,8 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.ui.FeedActionsHost
 import wtf.mxl.pixmix.shared.ui.IllustFeed
 import wtf.mxl.pixmix.shared.ui.IllustGrid
+import wtf.mxl.pixmix.shared.ui.IllustTileFeed
+import wtf.mxl.pixmix.shared.ui.WIDE_FEED_BREAKPOINT
 
 @Composable
 fun RankingScreen(component: RankingComponent, modifier: Modifier = Modifier) {
@@ -53,17 +57,31 @@ fun RankingScreen(component: RankingComponent, modifier: Modifier = Modifier) {
                 state.items.isEmpty() && state.loading -> CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                 )
-                else -> when (layout) {
-                    FeedLayout.Grid -> IllustGrid(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
-                    )
-                    FeedLayout.Feed -> IllustFeed(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
-                    )
+                else -> FeedActionsHost(controller = component.actions) { actions ->
+                    when (layout) {
+                        FeedLayout.Grid -> IllustGrid(
+                            items = state.items,
+                            onClick = component::openIllust,
+                            onEndReached = component::loadMore,
+                        )
+                        FeedLayout.Feed -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                            if (maxWidth >= WIDE_FEED_BREAKPOINT) {
+                                IllustTileFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            } else {
+                                IllustFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -4,12 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -54,6 +55,7 @@ fun IllustFeed(
     onEndReached: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     state: LazyListState = rememberLazyListState(),
+    actions: FeedActions = FeedActions.Noop,
     /** Hi-res prefetch radius: cards within ±N of the visible window get the
      *  full pixiv master1200 image; the rest stay on the cheap 360px placeholder. */
     hiResRadius: Int = 3,
@@ -90,13 +92,19 @@ fun IllustFeed(
         }
     }
 
-    // On wide screens (desktop, tablets) cap the feed width so cards don't stretch
-    // across half a monitor. Centered, max 720dp — close to phone-portrait reading width.
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+    // Each card is sized to fit the viewport: image takes the remaining height after the
+    // author row, with ContentScale.Fit so the whole post is visible without scrolling
+    // through one image. On wide screens, cap card width so images don't blow up across
+    // a monitor (image is letterboxed inside).
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+    ) {
+        val cardHeight = maxHeight
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 720.dp),
+                .widthIn(max = 900.dp),
             state = state,
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -105,7 +113,9 @@ fun IllustFeed(
                 FeedCard(
                     illust = illust,
                     loadFullRes = index in hiResRange,
+                    cardHeight = cardHeight,
                     onClick = { onClick(illust.id) },
+                    actions = actions,
                 )
             }
         }
@@ -113,17 +123,36 @@ fun IllustFeed(
 }
 
 @Composable
-private fun FeedCard(illust: IllustSummary, loadFullRes: Boolean, onClick: () -> Unit) {
+private fun FeedCard(
+    illust: IllustSummary,
+    loadFullRes: Boolean,
+    cardHeight: androidx.compose.ui.unit.Dp,
+    onClick: () -> Unit,
+    actions: FeedActions,
+) {
+    val pagerState = if (illust.pageCount > 1)
+        rememberPagerState(pageCount = { illust.pageCount }) else null
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .height(cardHeight),
     ) {
-        FeedImageBlock(illust = illust, loadFullRes = loadFullRes)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clickable(onClick = onClick),
+        ) {
+            FeedImageBlock(
+                illust = illust,
+                loadFullRes = loadFullRes,
+                pagerState = pagerState,
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -131,7 +160,8 @@ private fun FeedCard(illust: IllustSummary, loadFullRes: Boolean, onClick: () ->
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = onClick),
             ) {
                 if (illust.author.avatarUrl.isNotBlank()) {
                     PixivImage(
@@ -141,7 +171,9 @@ private fun FeedCard(illust: IllustSummary, loadFullRes: Boolean, onClick: () ->
                     )
                 }
             }
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.weight(1f).clickable(onClick = onClick),
+            ) {
                 Text(
                     illust.title.ifBlank { "Untitled" },
                     style = MaterialTheme.typography.bodyMedium,
@@ -155,26 +187,32 @@ private fun FeedCard(illust: IllustSummary, loadFullRes: Boolean, onClick: () ->
                     maxLines = 1,
                 )
             }
+            FeedCardActions(
+                illust = illust,
+                actions = actions,
+                currentPageIndex = pagerState?.currentPage,
+            )
         }
     }
 }
 
 @Composable
-private fun FeedImageBlock(illust: IllustSummary, loadFullRes: Boolean) {
-    val ratio = (illust.width.toFloat() / illust.height.coerceAtLeast(1))
-        .coerceIn(0.6f, 1.6f)
-
+private fun FeedImageBlock(
+    illust: IllustSummary,
+    loadFullRes: Boolean,
+    pagerState: androidx.compose.foundation.pager.PagerState?,
+) {
     val imageMod = Modifier
-        .fillMaxWidth()
-        .aspectRatio(ratio)
+        .fillMaxSize()
         .background(MaterialTheme.colorScheme.surfaceVariant)
 
-    if (illust.pageCount <= 1) {
+    if (pagerState == null) {
         Box(modifier = imageMod) {
             LayeredPixivImage(
                 placeholderUrl = illust.thumbnailUrl.toSmallSquareUrl(),
                 fullUrl = illust.thumbnailUrl.toMasterPreviewUrl(),
                 contentDescription = illust.title,
+                contentScale = ContentScale.Fit,
                 loadFullRes = loadFullRes,
             )
             Badges(illust = illust, modifier = Modifier.fillMaxSize())
@@ -183,13 +221,13 @@ private fun FeedImageBlock(illust: IllustSummary, loadFullRes: Boolean) {
         // Multi-page: VK-style horizontal swipe between pages of the same post.
         // HorizontalPager itself only renders the current ± neighbouring pages,
         // so non-current pages won't even fetch a placeholder.
-        val pagerState = rememberPagerState(pageCount = { illust.pageCount })
         Box(modifier = imageMod) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { i ->
                 LayeredPixivImage(
                     placeholderUrl = illust.thumbnailUrl.toSmallSquareUrl(i),
                     fullUrl = illust.thumbnailUrl.toMasterPreviewUrl(pageIndex = i),
                     contentDescription = illust.title,
+                    contentScale = ContentScale.Fit,
                     loadFullRes = loadFullRes && i == pagerState.currentPage,
                 )
             }

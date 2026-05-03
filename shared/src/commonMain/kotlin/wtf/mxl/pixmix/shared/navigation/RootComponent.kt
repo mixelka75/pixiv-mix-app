@@ -18,11 +18,15 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.Serializable
 import wtf.mxl.pixmix.shared.auth.SessionStore
+import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
+import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
 import wtf.mxl.pixmix.shared.data.repository.DiscoveryRepository
 import wtf.mxl.pixmix.shared.data.repository.IllustRepository
 import wtf.mxl.pixmix.shared.data.repository.RankingRepository
 import wtf.mxl.pixmix.shared.data.repository.SearchRepository
+import wtf.mxl.pixmix.shared.feature.bookmarks.BookmarksComponent
 import wtf.mxl.pixmix.shared.feature.home.HomeComponent
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.feature.illust.IllustDetailComponent
 import wtf.mxl.pixmix.shared.feature.illust.IllustViewerComponent
 import wtf.mxl.pixmix.shared.feature.login.LoginComponent
@@ -42,6 +46,9 @@ class RootComponent(
     private val searchRepo: SearchRepository,
     private val rankingRepo: RankingRepository,
     private val prefs: UserPrefs,
+    private val likeStore: LocalLikeStore,
+    private val bookmarkStore: LocalBookmarkStore,
+    private val imageDownloader: ImageDownloader,
 ) : ComponentContext by componentContext {
 
     private val nav = StackNavigation<Config>()
@@ -82,6 +89,10 @@ class RootComponent(
                         sessionStore = sessionStore,
                         cookies = cookies,
                         prefs = prefs,
+                        likeStore = likeStore,
+                        bookmarkStore = bookmarkStore,
+                        illustRepo = illustRepo,
+                        imageDownloader = imageDownloader,
                         onOpenIllust = ::openIllust,
                     )
                 },
@@ -90,6 +101,10 @@ class RootComponent(
                         componentContext = c,
                         repo = searchRepo,
                         prefs = prefs,
+                        likeStore = likeStore,
+                        bookmarkStore = bookmarkStore,
+                        illustRepo = illustRepo,
+                        imageDownloader = imageDownloader,
                         onOpenIllust = ::openIllust,
                     )
                 },
@@ -97,6 +112,21 @@ class RootComponent(
                     RankingComponent(
                         componentContext = c,
                         repo = rankingRepo,
+                        prefs = prefs,
+                        likeStore = likeStore,
+                        bookmarkStore = bookmarkStore,
+                        illustRepo = illustRepo,
+                        imageDownloader = imageDownloader,
+                        onOpenIllust = ::openIllust,
+                    )
+                },
+                bookmarksFactory = { c ->
+                    BookmarksComponent(
+                        componentContext = c,
+                        store = bookmarkStore,
+                        likeStore = likeStore,
+                        illustRepo = illustRepo,
+                        imageDownloader = imageDownloader,
                         prefs = prefs,
                         onOpenIllust = ::openIllust,
                     )
@@ -113,6 +143,9 @@ class RootComponent(
                 illustId = config.illustId,
                 repo = illustRepo,
                 prefs = prefs,
+                likeStore = likeStore,
+                bookmarkStore = bookmarkStore,
+                imageDownloader = imageDownloader,
                 onOpenViewer = { id, idx -> nav.push(Config.IllustViewer(id, idx)) },
                 onOpenIllust = ::openIllust,
                 onBack = { nav.pop() },

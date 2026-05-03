@@ -2,6 +2,7 @@ package wtf.mxl.pixmix.shared.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.data.api.FeedMode
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.ui.FeedActionsHost
 import wtf.mxl.pixmix.shared.ui.IllustFeed
 import wtf.mxl.pixmix.shared.ui.IllustGrid
+import wtf.mxl.pixmix.shared.ui.IllustTileFeed
+import wtf.mxl.pixmix.shared.ui.WIDE_FEED_BREAKPOINT
 
 @Composable
 fun HomeScreen(component: HomeComponent, modifier: Modifier = Modifier) {
@@ -42,35 +46,49 @@ fun HomeScreen(component: HomeComponent, modifier: Modifier = Modifier) {
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.error != null && state.items.isEmpty() -> Text(
-                    "Error: ${state.error}",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
-                state.items.isEmpty() && state.loading -> CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                )
-                else -> when (layout) {
-                    FeedLayout.Grid -> IllustGrid(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
+        FeedActionsHost(controller = component.actions) { actions ->
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                when {
+                    state.error != null && state.items.isEmpty() -> Text(
+                        "Error: ${state.error}",
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                        color = MaterialTheme.colorScheme.error,
                     )
-                    FeedLayout.Feed -> IllustFeed(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
+                    state.items.isEmpty() && state.loading -> CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                    else -> when (layout) {
+                        FeedLayout.Grid -> IllustGrid(
+                            items = state.items,
+                            onClick = component::openIllust,
+                            onEndReached = component::loadMore,
+                        )
+                        FeedLayout.Feed -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                            if (maxWidth >= WIDE_FEED_BREAKPOINT) {
+                                IllustTileFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            } else {
+                                IllustFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (state.loading && state.items.isNotEmpty()) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
                     )
                 }
-            }
-            if (state.loading && state.items.isNotEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                )
             }
         }
     }

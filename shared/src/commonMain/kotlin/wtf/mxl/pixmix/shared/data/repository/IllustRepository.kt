@@ -36,8 +36,12 @@ class IllustRepository(
         env.body?.is_liked ?: true
     }
 
-    suspend fun bookmark(id: String, private: Boolean = false): Result<String?> = withCsrfRetry {
-        val env = api.bookmarkAdd(id, restrict = if (private) 1 else 0)
+    suspend fun bookmark(
+        id: String,
+        private: Boolean = false,
+        tags: List<String> = emptyList(),
+    ): Result<String?> = withCsrfRetry {
+        val env = api.bookmarkAdd(id, restrict = if (private) 1 else 0, tags = tags)
         if (env.error) error(env.message)
         env.body?.last_bookmark_id
     }

@@ -13,8 +13,9 @@ package wtf.mxl.pixmix.shared.util
  */
 fun String.toMasterPreviewUrl(
     pageIndex: Int = 0,
-    /** Pixiv resize prefix. Smaller = faster. `600x1200_90` = ~600px long side, jpeg q=90. */
-    resize: String = "600x1200_90",
+    /** Pixiv resize prefix. Smaller = faster. `1200x1200_90` ~= master1200 with jpeg q=90 —
+     *  long side capped at 1200px, which matches the largest preview pixiv serves. */
+    resize: String = "1200x1200_90",
 ): String {
     if (isBlank()) return this
     var url = this

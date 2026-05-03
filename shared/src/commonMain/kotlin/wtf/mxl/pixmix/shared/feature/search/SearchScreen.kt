@@ -2,6 +2,7 @@ package wtf.mxl.pixmix.shared.feature.search
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,8 +27,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.data.api.FeedMode
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.ui.FeedActionsHost
 import wtf.mxl.pixmix.shared.ui.IllustFeed
 import wtf.mxl.pixmix.shared.ui.IllustGrid
+import wtf.mxl.pixmix.shared.ui.IllustTileFeed
+import wtf.mxl.pixmix.shared.ui.WIDE_FEED_BREAKPOINT
 
 @Composable
 fun SearchScreen(component: SearchComponent, modifier: Modifier = Modifier) {
@@ -56,32 +60,46 @@ fun SearchScreen(component: SearchComponent, modifier: Modifier = Modifier) {
                 )
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.error != null -> Text(
-                    "Error: ${state.error}",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
-                state.items.isEmpty() && state.loading -> CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                )
-                state.items.isEmpty() -> Text(
-                    "Type a tag and hit search",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                )
-                else -> when (layout) {
-                    FeedLayout.Grid -> IllustGrid(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
+        FeedActionsHost(controller = component.actions) { actions ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.error != null -> Text(
+                        "Error: ${state.error}",
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                        color = MaterialTheme.colorScheme.error,
                     )
-                    FeedLayout.Feed -> IllustFeed(
-                        items = state.items,
-                        onClick = component::openIllust,
-                        onEndReached = component::loadMore,
+                    state.items.isEmpty() && state.loading -> CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
                     )
+                    state.items.isEmpty() -> Text(
+                        "Type a tag and hit search",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                    else -> when (layout) {
+                        FeedLayout.Grid -> IllustGrid(
+                            items = state.items,
+                            onClick = component::openIllust,
+                            onEndReached = component::loadMore,
+                        )
+                        FeedLayout.Feed -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                            if (maxWidth >= WIDE_FEED_BREAKPOINT) {
+                                IllustTileFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            } else {
+                                IllustFeed(
+                                    items = state.items,
+                                    onClick = component::openIllust,
+                                    onEndReached = component::loadMore,
+                                    actions = actions,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

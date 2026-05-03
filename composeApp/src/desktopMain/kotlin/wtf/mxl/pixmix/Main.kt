@@ -16,6 +16,8 @@ import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
 import wtf.mxl.pixmix.shared.RootContent
 import wtf.mxl.pixmix.shared.auth.SessionStore
+import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
+import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
 import wtf.mxl.pixmix.shared.data.repository.DiscoveryRepository
 import wtf.mxl.pixmix.shared.data.repository.IllustRepository
 import wtf.mxl.pixmix.shared.data.repository.RankingRepository
@@ -24,6 +26,7 @@ import wtf.mxl.pixmix.shared.di.desktopPlatformModule
 import wtf.mxl.pixmix.shared.di.sharedModule
 import wtf.mxl.pixmix.shared.navigation.RootComponent
 import wtf.mxl.pixmix.shared.network.cookies.PersistentCookiesStorage
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.prefs.UserPrefs
 import wtf.mxl.pixmix.shared.ui.buildImageLoader
 import java.io.File
@@ -57,6 +60,9 @@ fun main() {
                 searchRepo = koin.get<SearchRepository>(),
                 rankingRepo = koin.get<RankingRepository>(),
                 prefs = koin.get<UserPrefs>(),
+                likeStore = koin.get<LocalLikeStore>(),
+                bookmarkStore = koin.get<LocalBookmarkStore>(),
+                imageDownloader = koin.get<ImageDownloader>(),
             )
         }
         LaunchedEffect(Unit) { lifecycle.resume() }

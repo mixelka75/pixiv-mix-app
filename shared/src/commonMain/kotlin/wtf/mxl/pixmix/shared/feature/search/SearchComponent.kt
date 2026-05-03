@@ -12,8 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import wtf.mxl.pixmix.shared.data.api.FeedMode
+import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
+import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
+import wtf.mxl.pixmix.shared.data.repository.IllustRepository
 import wtf.mxl.pixmix.shared.data.repository.SearchRepository
 import wtf.mxl.pixmix.shared.domain.model.IllustSummary
+import wtf.mxl.pixmix.shared.feature.actions.FeedActionsController
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
 import wtf.mxl.pixmix.shared.prefs.UserPrefs
 
@@ -21,6 +26,10 @@ class SearchComponent(
     componentContext: ComponentContext,
     private val repo: SearchRepository,
     prefs: UserPrefs,
+    likeStore: LocalLikeStore,
+    bookmarkStore: LocalBookmarkStore,
+    illustRepo: IllustRepository,
+    imageDownloader: ImageDownloader,
     private val onOpenIllust: (String) -> Unit,
 ) : ComponentContext by componentContext {
 
@@ -41,6 +50,14 @@ class SearchComponent(
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var searchJob: Job? = null
+
+    val actions: FeedActionsController = FeedActionsController(
+        likeStore = likeStore,
+        bookmarkStore = bookmarkStore,
+        repo = illustRepo,
+        downloader = imageDownloader,
+        scope = scope,
+    )
 
     init {
         lifecycle.doOnDestroy { scope.cancel() }

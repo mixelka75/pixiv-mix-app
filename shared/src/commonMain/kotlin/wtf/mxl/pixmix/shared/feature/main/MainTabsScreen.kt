@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Search
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import wtf.mxl.pixmix.shared.feature.bookmarks.BookmarksScreen
 import wtf.mxl.pixmix.shared.feature.home.HomeScreen
 import wtf.mxl.pixmix.shared.feature.ranking.RankingScreen
 import wtf.mxl.pixmix.shared.feature.search.SearchScreen
@@ -94,6 +96,7 @@ private fun TabContent(component: MainTabsComponent, selected: Tab) {
     when (selected) {
         Tab.Home -> HomeScreen(component.home)
         Tab.Search -> SearchScreen(component.search)
+        Tab.Bookmarks -> BookmarksScreen(component.bookmarks)
         Tab.Ranking -> RankingScreen(component.ranking)
         Tab.Settings -> SettingsScreen(component.settings)
     }
@@ -102,6 +105,7 @@ private fun TabContent(component: MainTabsComponent, selected: Tab) {
 private fun Tab.label(): String = when (this) {
     Tab.Home -> "Home"
     Tab.Search -> "Search"
+    Tab.Bookmarks -> "Bookmarks"
     Tab.Ranking -> "Ranking"
     Tab.Settings -> "Settings"
 }
@@ -109,6 +113,7 @@ private fun Tab.label(): String = when (this) {
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Home -> Icons.Filled.Home
     Tab.Search -> Icons.Filled.Search
+    Tab.Bookmarks -> Icons.Filled.Bookmark
     Tab.Ranking -> Icons.Filled.Leaderboard
     Tab.Settings -> Icons.Filled.Settings
 }

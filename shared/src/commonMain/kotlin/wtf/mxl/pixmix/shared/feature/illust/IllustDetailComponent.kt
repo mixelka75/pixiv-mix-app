@@ -10,10 +10,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
+import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
 import wtf.mxl.pixmix.shared.data.repository.IllustRepository
 import wtf.mxl.pixmix.shared.domain.model.IllustDetail
 import wtf.mxl.pixmix.shared.domain.model.IllustPage
 import wtf.mxl.pixmix.shared.domain.model.IllustSummary
+import wtf.mxl.pixmix.shared.feature.actions.FeedActionsController
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
 import wtf.mxl.pixmix.shared.prefs.UserPrefs
 
@@ -22,6 +26,9 @@ class IllustDetailComponent(
     val illustId: String,
     private val repo: IllustRepository,
     prefs: UserPrefs,
+    likeStore: LocalLikeStore,
+    bookmarkStore: LocalBookmarkStore,
+    imageDownloader: ImageDownloader,
     private val onOpenViewer: (illustId: String, startIndex: Int) -> Unit,
     private val onOpenIllust: (String) -> Unit,
     private val onBack: () -> Unit,
@@ -43,9 +50,34 @@ class IllustDetailComponent(
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
 
+    val actions: FeedActionsController = FeedActionsController(
+        likeStore = likeStore,
+        bookmarkStore = bookmarkStore,
+        repo = repo,
+        downloader = imageDownloader,
+        scope = scope,
+    )
+
     init {
         lifecycle.doOnDestroy { scope.cancel() }
         load()
+    }
+
+    fun toIllustSummary(): IllustSummary? {
+        val d = _state.value.detail ?: return null
+        return IllustSummary(
+            id = d.id,
+            title = d.title,
+            kind = d.kind,
+            xRestrict = d.xRestrict,
+            width = d.width,
+            height = d.height,
+            pageCount = d.pageCount,
+            thumbnailUrl = d.previewUrl,
+            tags = d.tags,
+            author = d.author,
+            isMasked = false,
+        )
     }
 
     fun retry() = load()

@@ -5,6 +5,7 @@ import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.platform.SecureStorage
 import wtf.mxl.pixmix.shared.platform.SecureStorageAndroid
 
@@ -15,4 +16,5 @@ val androidPlatformModule = module {
             androidContext().getSharedPreferences("pixmix_prefs", Context.MODE_PRIVATE),
         )
     }
+    single { ImageDownloader(context = androidContext(), httpClient = get()) }
 }

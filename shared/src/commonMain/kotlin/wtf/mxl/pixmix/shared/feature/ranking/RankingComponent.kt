@@ -10,8 +10,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
+import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
+import wtf.mxl.pixmix.shared.data.repository.IllustRepository
 import wtf.mxl.pixmix.shared.data.repository.RankingRepository
 import wtf.mxl.pixmix.shared.domain.model.IllustSummary
+import wtf.mxl.pixmix.shared.feature.actions.FeedActionsController
+import wtf.mxl.pixmix.shared.platform.ImageDownloader
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
 import wtf.mxl.pixmix.shared.prefs.UserPrefs
 
@@ -29,6 +34,10 @@ class RankingComponent(
     componentContext: ComponentContext,
     private val repo: RankingRepository,
     prefs: UserPrefs,
+    likeStore: LocalLikeStore,
+    bookmarkStore: LocalBookmarkStore,
+    illustRepo: IllustRepository,
+    imageDownloader: ImageDownloader,
     private val onOpenIllust: (String) -> Unit,
 ) : ComponentContext by componentContext {
 
@@ -48,6 +57,14 @@ class RankingComponent(
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+
+    val actions: FeedActionsController = FeedActionsController(
+        likeStore = likeStore,
+        bookmarkStore = bookmarkStore,
+        repo = illustRepo,
+        downloader = imageDownloader,
+        scope = scope,
+    )
 
     init {
         lifecycle.doOnDestroy { scope.cancel() }
