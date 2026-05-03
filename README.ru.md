@@ -1,8 +1,11 @@
-# PixMix
+<p align="center">
+  <img src="assets/icon.svg" width="128" alt="PixMix icon"/>
+</p>
+<h1 align="center">PixMix</h1>
 
-> [English](README.md) · **Русский**
+<p align="center"><a href="README.md">English</a> · <strong>Русский</strong></p>
 
-Нативный Android-клиент для pixiv поверх AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Опционально — собственный nginx-прокси для тех, кто хочет жирный канал без VPN или у кого pixiv режется ISP.
+Нативный Android- и desktop-клиент для pixiv поверх AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Опционально — собственный nginx-прокси для тех, кто хочет жирный канал без VPN или у кого pixiv режется ISP.
 
 ---
 

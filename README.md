@@ -1,8 +1,11 @@
-# PixMix
+<p align="center">
+  <img src="assets/icon.svg" width="128" alt="PixMix icon"/>
+</p>
+<h1 align="center">PixMix</h1>
 
-> **English** · [Русский](README.ru.md)
+<p align="center"><strong>English</strong> · <a href="README.ru.md">Русский</a></p>
 
-Native Android client for pixiv built on top of the AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Optional self-hosted reverse proxy for users behind ISP-level pixiv blocks or wanting a fat upstream pipe.
+Native Android + desktop client for pixiv built on top of the AJAX/web API. Kotlin Multiplatform + Compose Multiplatform. Optional self-hosted reverse proxy for users behind ISP-level pixiv blocks or wanting a fat upstream pipe.
 
 ---
 
