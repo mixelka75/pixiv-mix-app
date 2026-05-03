@@ -84,13 +84,18 @@ compose.desktop {
     application {
         mainClass = "wtf.mxl.pixmix.MainKt"
         nativeDistributions {
-            targetFormats(
-                TargetFormat.Deb,
-                TargetFormat.AppImage,
-                TargetFormat.Msi,
-                TargetFormat.Exe,
-                TargetFormat.Dmg,
-            )
+            // jpackage rejects target formats foreign to the current host OS,
+            // so we pick only the ones valid for whichever runner is building.
+            val osName = System.getProperty("os.name").lowercase()
+            val formats = when {
+                osName.contains("mac") || osName.contains("darwin") ->
+                    arrayOf(TargetFormat.Dmg)
+                osName.contains("windows") ->
+                    arrayOf(TargetFormat.Msi, TargetFormat.Exe)
+                else ->
+                    arrayOf(TargetFormat.Deb, TargetFormat.AppImage)
+            }
+            targetFormats(*formats)
             packageName = "PixMix"
             packageVersion = "0.1.0"
             linux {
