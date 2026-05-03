@@ -2,6 +2,7 @@ package wtf.mxl.pixmix
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -63,6 +64,7 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             title = "PixMix",
+            icon = painterResource("icon.png"),
             state = rememberWindowState(width = 1200.dp, height = 900.dp),
         ) {
             RootContent(rootComponent)

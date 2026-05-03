@@ -72,6 +72,15 @@ compose.desktop {
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
             packageName = "PixMix"
             packageVersion = "0.1.0"
+            linux {
+                iconFile.set(project.file("src/desktopMain/resources/icon.png"))
+            }
+            macOS {
+                iconFile.set(project.file("src/desktopMain/resources/icon.png"))
+            }
+            windows {
+                iconFile.set(project.file("src/desktopMain/resources/icon.png"))
+            }
         }
     }
 }

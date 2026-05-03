@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="crispEdges">
+  <!-- Round-square background -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="#15171C"/>
+
+  <!-- Pixel-art "P" in brand orange. Grid is 8 columns × 8 rows, cell = 48px.
+       Origin offset (88, 88) puts the figure roughly centered. -->
+  <g fill="#FF7A00">
+    <!-- column 0 (full vertical bar) -->
+    <rect x="88"  y="88"  width="48" height="48"/>
+    <rect x="88"  y="136" width="48" height="48"/>
+    <rect x="88"  y="184" width="48" height="48"/>
+    <rect x="88"  y="232" width="48" height="48"/>
+    <rect x="88"  y="280" width="48" height="48"/>
+    <rect x="88"  y="328" width="48" height="48"/>
+    <rect x="88"  y="376" width="48" height="48"/>
+
+    <!-- top of bowl -->
+    <rect x="136" y="88"  width="48" height="48"/>
+    <rect x="184" y="88"  width="48" height="48"/>
+    <rect x="232" y="88"  width="48" height="48"/>
+    <rect x="280" y="88"  width="48" height="48"/>
+
+    <!-- right edge of bowl -->
+    <rect x="280" y="136" width="48" height="48"/>
+    <rect x="280" y="184" width="48" height="48"/>
+
+    <!-- bottom of bowl -->
+    <rect x="232" y="232" width="48" height="48"/>
+    <rect x="184" y="232" width="48" height="48"/>
+    <rect x="136" y="232" width="48" height="48"/>
+  </g>
+
+  <!-- "Mix" accent: an overlapping translucent secondary square in pink -->
+  <rect x="328" y="328" width="96" height="96" rx="12" fill="#FFB066" opacity="0.85"/>
+  <rect x="376" y="376" width="48" height="48" rx="6" fill="#15171C" opacity="0.6"/>
+</svg>
