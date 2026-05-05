@@ -2,3 +2,9 @@ node_modules/
 .wrangler/
 dist/
 .dev.vars
+
+# Personal Cloudflare config — copied from wrangler.example.toml on first deploy.
+# Contains the operator's chosen worker name, custom-domain bindings, and
+# CORS origin. Forkers should make their own copy.
+wrangler.toml
+wrangler.toml.local-backup

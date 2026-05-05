@@ -15,7 +15,11 @@ out/
 
 # Tool/agent state
 .claude/
+.omc/
 *.log
+
+# Worker / Node
+node_modules/
 
 # Secrets / per-host config (deploy)
 deploy/**/*.local.conf

@@ -1,0 +1,36 @@
+# Copy this file to `wrangler.toml`, edit the values, then deploy:
+#
+#   cp wrangler.example.toml wrangler.toml
+#   npx wrangler login
+#   npx wrangler secret put PIXMIX_TOKEN     # any random string
+#   npx wrangler deploy
+#
+# `wrangler.toml` is gitignored so your fork can keep personal domain/origin
+# settings locally without leaking them into the public repo.
+
+name = "pixmix-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-05-05"
+
+# By default the worker is reachable at https://<name>.<account>.workers.dev,
+# which is fine for personal use. If you want a friendly URL on a domain you
+# already have on Cloudflare, uncomment the `routes` block and set the pattern.
+# wrangler will auto-create the DNS record + SSL when you deploy.
+#
+# routes = [
+#     { pattern = "api.pixiv.example.com", custom_domain = true },
+# ]
+
+[vars]
+# Origin that's allowed to call the worker — i.e. the URL your web build is
+# hosted on. Use "*" to allow any origin, but note: with "*" the browser will
+# refuse to send credentials (`Access-Control-Allow-Credentials` is incompatible
+# with wildcard origins), so the web build can't authenticate. Stick to an
+# explicit origin once your web client has a permanent URL.
+ALLOWED_ORIGIN = "*"
+
+# PIXMIX_TOKEN is a *secret* and is NOT stored in this file. Set it with:
+#   npx wrangler secret put PIXMIX_TOKEN
+# Clients then send the same value in the `X-Pixmix-Token` header on every
+# request — without it the worker rejects the request with 403, so it can't
+# be abused as a free open proxy.

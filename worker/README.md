@@ -8,44 +8,48 @@ This is a drop-in alternative to the nginx config under `deploy/nginx/` — work
 the same way (path-rewrites + token gate + Referer injection) but runs on
 Cloudflare's free tier (100 000 req/day) instead of your own VPS.
 
-## Deploy
+## Setup (anyone forking — repo doesn't ship a real `wrangler.toml`)
 
 ```bash
 cd worker
+cp wrangler.example.toml wrangler.toml         # personalise this in your fork —
+                                               # `wrangler.toml` is gitignored
 npm install
-npx wrangler login                                # one-time, opens browser
-npx wrangler secret put PIXMIX_TOKEN              # paste the same token you'll
-                                                  # set in the app's Settings
+npx wrangler login                             # one-time, opens browser
+npx wrangler secret put PIXMIX_TOKEN           # any random string; you'll paste
+                                               # the same value into the app's
+                                               # Settings → Proxy → Token
 npx wrangler deploy
 ```
 
-The worker lands at `https://pixmix-proxy.<your-account>.workers.dev`. Test:
+After deploy you'll see a URL like `https://pixmix-proxy.<your-account>.workers.dev`.
+Quick check:
 
 ```bash
 curl https://pixmix-proxy.<your-account>.workers.dev/health
 # → pixmix-proxy ok
 ```
 
-## Configure CORS origin
+## Personalising `wrangler.toml`
 
-Edit `wrangler.toml`:
+Two things in the example file you might want to change before deploying:
 
 ```toml
+# routes = [
+#     { pattern = "api.pixiv.example.com", custom_domain = true },
+# ]
+
 [vars]
-ALLOWED_ORIGIN = "https://pixiv.mxl.wtf"
+ALLOWED_ORIGIN = "*"
 ```
 
-Set to `"*"` to skip the origin check (not recommended — wildcard disables
-credentials in the browser).
-
-## Custom subdomain (optional)
-
-If `mxl.wtf` is on Cloudflare you can route a friendly domain to the worker:
-
-1. Cloudflare dashboard → Workers & Pages → `pixmix-proxy` → Triggers → Add
-   Custom Domain → `api.pixiv.mxl.wtf`.
-2. Wait ~30 s for the DNS record to propagate.
-3. Use that URL as the proxy `baseUrl` in the app.
+* **Custom domain** — uncomment the `routes` block and set the pattern to a
+  hostname on a Cloudflare-managed zone in the same account. wrangler creates
+  the DNS record + SSL automatically; the friendly URL is up within a minute.
+* **CORS origin** — set this to the URL where your web client will be hosted
+  (e.g. `https://pixiv.example.com`). Wildcard `*` works for personal/native
+  use, but the browser refuses to send credentials with a wildcard origin, so
+  the web build can't authenticate against `*`.
 
 ## Routes
 
