@@ -1,0 +1,81 @@
+name: Pages
+
+on:
+  # Same trigger as the release workflow — every tagged version updates the
+  # static gh-pages site.
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Required by deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time. Cancelling in-flight runs avoids races where
+# an older build clobbers a newer one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build wasmJs distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build :composeApp:webBrowserDistribution
+        run: ./gradlew :composeApp:webBrowserDistribution --no-daemon
+
+      - name: Stage Pages artifact
+        env:
+          # Optional: set a repo variable PAGES_CUSTOM_DOMAIN to your custom
+          # subdomain (e.g. pixiv.example.com). Empty = use *.github.io URL.
+          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN }}
+        run: |
+          set -eu
+          src="composeApp/build/dist/web/productionExecutable"
+          out="pages-out"
+          mkdir -p "$out"
+          cp -r "$src"/* "$out/"
+
+          # GitHub Pages serves /404.html as a fallback for unknown paths,
+          # which lets a single-page app handle deep links via the History
+          # API. We point it at the same bundle so the user lands on a
+          # working page no matter what URL they hit.
+          cp "$out/index.html" "$out/404.html"
+
+          # CNAME file is what GitHub Pages reads to bind a custom domain.
+          # Skipping it leaves the site on <user>.github.io/<repo>.
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            echo "$CUSTOM_DOMAIN" > "$out/CNAME"
+            echo "CNAME → $CUSTOM_DOMAIN"
+          else
+            echo "No PAGES_CUSTOM_DOMAIN set — serving from default *.github.io URL."
+          fi
+
+          ls -la "$out"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

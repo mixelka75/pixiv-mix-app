@@ -20,7 +20,10 @@ plugins {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // Kotlin/Wasm's binaryen + nodejs setup plugins register their own custom
+    // download repositories at build time (release tarballs from github.com).
+    // We leave the resolution mode at the Gradle default so those plugin-added
+    // repositories aren't rejected.
     repositories {
         google()
         mavenCentral()

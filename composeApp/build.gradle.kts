@@ -13,6 +13,17 @@ kotlin {
     androidTarget()
     jvm("desktop")
 
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs("web") {
+        moduleName = "composeApp"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeApp.js"
+            }
+        }
+        binaries.executable()
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(projects.shared)
@@ -34,6 +45,15 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
         }
+
+        val webMain by getting {
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+            }
+        }
     }
 }
 
@@ -45,8 +65,8 @@ android {
         applicationId = "wtf.mxl.pixmix"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -97,7 +117,7 @@ compose.desktop {
             }
             targetFormats(*formats)
             packageName = "PixMix"
-            packageVersion = "0.2.1"
+            packageVersion = "0.3.0"
             linux {
                 iconFile.set(project.file("src/desktopMain/resources/icon.png"))
             }

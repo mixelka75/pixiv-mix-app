@@ -14,6 +14,7 @@ import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
+import io.ktor.http.parseServerSetCookieHeader
 import io.ktor.http.setCookie
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -76,16 +77,23 @@ fun buildPixivHttpClient(
     // and matched against the canonical pixiv.net origin even when the wire host is the proxy.
     client.plugin(HttpSend).intercept { request ->
         val pixivCookies = cookies.get(PixivHosts.PIXIV_REFERENCE_URL)
-        if (pixivCookies.isNotEmpty()) {
+        val cookieHeader = pixivCookies.joinToString("; ") { "${it.name}=${it.value}" }
+        if (cookieHeader.isNotEmpty()) {
             request.headers.remove(HttpHeaders.Cookie)
-            request.headers.append(
-                HttpHeaders.Cookie,
-                pixivCookies.joinToString("; ") { "${it.name}=${it.value}" },
-            )
+            request.headers.append(HttpHeaders.Cookie, cookieHeader)
         }
 
         val cfg = proxyConfig()
-        if (cfg.enabled && cfg.baseUrl.isNotBlank()) applyProxyRewrite(request, cfg)
+        val proxyApplied = cfg.enabled && cfg.baseUrl.isNotBlank() &&
+            applyProxyRewrite(request, cfg)
+
+        // Browsers strip the standard Cookie header from cross-origin fetch requests
+        // (it's in the forbidden header list). When we're going through the proxy
+        // worker, mirror cookies into a custom header it knows to forward.
+        if (proxyApplied && cookieHeader.isNotEmpty()) {
+            request.headers.remove("X-Pixmix-Cookie")
+            request.headers.append("X-Pixmix-Cookie", cookieHeader)
+        }
 
         val call = execute(request)
 
@@ -95,21 +103,33 @@ fun buildPixivHttpClient(
                 cookie = responseCookie.copy(domain = ".${PixivHosts.WEB.removePrefix("www.")}"),
             )
         }
+        // Worker surfaces upstream Set-Cookie via X-Pixmix-Set-Cookie since the
+        // browser's same-origin policy would otherwise refuse cross-origin Set-Cookie.
+        call.response.headers["X-Pixmix-Set-Cookie"]?.let { raw ->
+            raw.split('\n').filter { it.isNotBlank() }.forEach { line ->
+                val parsed = parseServerSetCookieHeader(line)
+                cookies.addCookie(
+                    requestUrl = PixivHosts.PIXIV_REFERENCE_URL,
+                    cookie = parsed.copy(domain = ".${PixivHosts.WEB.removePrefix("www.")}"),
+                )
+            }
+        }
         call
     }
 
     return client
 }
 
-private fun applyProxyRewrite(request: HttpRequestBuilder, cfg: ProxyConfig) {
+/** Returns true if the rewrite was applied (URL host belonged to pixiv and proxy URL is sane). */
+private fun applyProxyRewrite(request: HttpRequestBuilder, cfg: ProxyConfig): Boolean {
     val originalHost = request.url.host
     val pathPrefix = when (originalHost) {
         PixivHosts.WEB -> "pixiv"
         PixivHosts.IMAGE -> "img"
-        else -> return // leave non-pixiv URLs alone
+        else -> return false // leave non-pixiv URLs alone
     }
-    val proxyUrl = runCatching { Url(cfg.baseUrl) }.getOrNull() ?: return
-    if (proxyUrl.host.isBlank() || proxyUrl.host.equals("localhost", ignoreCase = true)) return
+    val proxyUrl = runCatching { Url(cfg.baseUrl) }.getOrNull() ?: return false
+    if (proxyUrl.host.isBlank() || proxyUrl.host.equals("localhost", ignoreCase = true)) return false
     request.url.protocol = proxyUrl.protocol
     request.url.host = proxyUrl.host
     request.url.port = if (proxyUrl.port == 0) proxyUrl.protocol.defaultPort else proxyUrl.port
@@ -123,4 +143,5 @@ private fun applyProxyRewrite(request: HttpRequestBuilder, cfg: ProxyConfig) {
         request.headers.remove("X-Pixmix-Token")
         request.headers.append("X-Pixmix-Token", cfg.token)
     }
+    return true
 }
