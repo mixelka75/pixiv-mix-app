@@ -13,6 +13,7 @@ import org.w3c.dom.HTMLElement
 import org.koin.core.context.startKoin
 import wtf.mxl.pixmix.shared.RootContent
 import wtf.mxl.pixmix.shared.auth.SessionStore
+import wtf.mxl.pixmix.shared.config.WebBuildDefaults
 import wtf.mxl.pixmix.shared.data.local.LocalBookmarkStore
 import wtf.mxl.pixmix.shared.data.local.LocalLikeStore
 import wtf.mxl.pixmix.shared.data.repository.DiscoveryRepository
@@ -32,6 +33,19 @@ fun main() {
     val koin = startKoin {
         modules(webPlatformModule, sharedModule)
     }.koin
+
+    // The hosted web build needs a proxy: browsers can't reach pixiv directly
+    // (CORS). Seed defaults baked at build time the first time the user lands —
+    // they can still override anything in Settings later.
+    val prefs = koin.get<UserPrefs>()
+    val proxyState = prefs.proxy.value
+    if (proxyState.baseUrl.isBlank() && WebBuildDefaults.proxyBaseUrl.isNotBlank()) {
+        prefs.setProxyBaseUrl(WebBuildDefaults.proxyBaseUrl)
+        prefs.setProxyEnabled(true)
+    }
+    if (proxyState.token.isBlank() && WebBuildDefaults.proxyToken.isNotBlank()) {
+        prefs.setProxyToken(WebBuildDefaults.proxyToken)
+    }
 
     val httpClient = koin.get<HttpClient>()
     SingletonImageLoader.setSafe { ctx: PlatformContext ->

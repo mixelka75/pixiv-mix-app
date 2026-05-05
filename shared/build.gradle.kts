@@ -72,12 +72,47 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
         }
 
-        val webMain by getting
-        webMain.dependencies {
-            implementation(libs.ktor.client.js)
+        val webMain by getting {
+            kotlin.srcDir(layout.buildDirectory.dir("generated/web-config/kotlin"))
+            dependencies {
+                implementation(libs.ktor.client.js)
+            }
         }
     }
 }
+
+// Bake build-time defaults for the web target. The hosted Pages deploy needs a
+// proxy URL/token preconfigured (browsers can't talk to pixiv directly — CORS).
+// Forks pass their own values via -Ppixmix.web.proxyBaseUrl / -Ppixmix.web.proxyToken;
+// empty values mean "no default", and the user can fill it in Settings manually.
+val generateWebBuildDefaults = tasks.register("generateWebBuildDefaults") {
+    val baseUrl = providers.gradleProperty("pixmix.web.proxyBaseUrl").orElse("")
+    val token = providers.gradleProperty("pixmix.web.proxyToken").orElse("")
+    val outDir = layout.buildDirectory.dir("generated/web-config/kotlin/wtf/mxl/pixmix/shared/config")
+    inputs.property("baseUrl", baseUrl)
+    inputs.property("token", token)
+    outputs.dir(outDir)
+    doLast {
+        val dir = outDir.get().asFile.also { it.mkdirs() }
+        val esc = { s: String -> s.replace("\\", "\\\\").replace("\"", "\\\"") }
+        dir.resolve("WebBuildDefaults.kt").writeText(
+            """
+            package wtf.mxl.pixmix.shared.config
+
+            object WebBuildDefaults {
+                const val proxyBaseUrl: String = "${esc(baseUrl.get())}"
+                const val proxyToken: String = "${esc(token.get())}"
+            }
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
+tasks.matching {
+    it.name.startsWith("compileKotlinWeb") || it.name.startsWith("compileWeb") || it.name == "kspKotlinWeb"
+}.configureEach { dependsOn(generateWebBuildDefaults) }
+tasks.matching { it.name == "sourcesJar" || it.name.endsWith("SourcesJar") }
+    .configureEach { dependsOn(generateWebBuildDefaults) }
 
 android {
     namespace = "wtf.mxl.pixmix.shared"

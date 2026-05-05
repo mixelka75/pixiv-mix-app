@@ -32,7 +32,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build :composeApp:webBrowserDistribution
-        run: ./gradlew :composeApp:webBrowserDistribution --no-daemon
+        # Optional repo vars PAGES_PROXY_BASE_URL / PAGES_PROXY_TOKEN bake the
+        # proxy defaults into the wasm bundle so the hosted site works on first
+        # load. They're not secrets — anything shipped to a public web bundle
+        # is visible to users; the worker token only gates rate-limit.
+        env:
+          PIXMIX_WEB_PROXY_BASE_URL: ${{ vars.PAGES_PROXY_BASE_URL }}
+          PIXMIX_WEB_PROXY_TOKEN: ${{ vars.PAGES_PROXY_TOKEN }}
+        run: |
+          ./gradlew :composeApp:webBrowserDistribution --no-daemon \
+            "-Ppixmix.web.proxyBaseUrl=${PIXMIX_WEB_PROXY_BASE_URL}" \
+            "-Ppixmix.web.proxyToken=${PIXMIX_WEB_PROXY_TOKEN}"
 
       - name: Stage Pages artifact
         env:
