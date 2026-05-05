@@ -15,7 +15,17 @@ class SecureStorageWeb : SecureStorage {
     override fun getString(key: String): String? = localStorage[ns(key)]
 
     override fun putString(key: String, value: String) {
-        localStorage[ns(key)] = value
+        // Browsers throw QuotaExceededError once localStorage hits its 5 MB cap.
+        // PersistentCookiesStorage rewrites the full cookies blob on every Set-Cookie,
+        // and pixiv rotates `__cf_bm` etc. continuously — uncaught, this would crash
+        // the wasm root and the user would see a blank page.
+        try {
+            localStorage[ns(key)] = value
+        } catch (_: Throwable) {
+            // Drop our keys to make room and try once more. If it still fails, give up.
+            clear()
+            try { localStorage[ns(key)] = value } catch (_: Throwable) { /* swallow */ }
+        }
     }
 
     override fun remove(key: String) {

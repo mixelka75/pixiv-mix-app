@@ -7,6 +7,7 @@ import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import wtf.mxl.pixmix.shared.network.PixivHosts
+import wtf.mxl.pixmix.shared.util.runCoroutineCatching
 
 private const val TTL_MS = 25 * 60 * 1000L
 
@@ -27,7 +28,10 @@ class CsrfTokenProvider(private val client: HttpClient) {
         val current = cached
         if (!forceRefresh && current != null && now - cachedAtMs < TTL_MS) return current
 
-        val html = runCatching {
+        // runCoroutineCatching (vs runCatching) lets cancellation propagate — without
+        // it, cancelling the coroutine while we're awaiting the home page would surface
+        // as a stale cached token instead of a CancellationException.
+        val html = runCoroutineCatching {
             client.get("https://${PixivHosts.WEB}/").bodyAsText()
         }.getOrNull() ?: return current
 
@@ -39,7 +43,9 @@ class CsrfTokenProvider(private val client: HttpClient) {
         token ?: current
     }
 
-    fun invalidate() {
+    /** Suspend so the mutated state stays under the same mutex as [get] — without it
+     *  Android/Desktop multithreaded dispatchers race on the cached fields. */
+    suspend fun invalidate() = mutex.withLock {
         cached = null
         cachedAtMs = 0
     }

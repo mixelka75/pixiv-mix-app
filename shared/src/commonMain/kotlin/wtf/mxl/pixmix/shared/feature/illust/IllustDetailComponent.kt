@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ class IllustDetailComponent(
     imageDownloader: ImageDownloader,
     private val onOpenViewer: (illustId: String, startIndex: Int) -> Unit,
     private val onOpenIllust: (String) -> Unit,
+    private val onOpenTagSearch: (String) -> Unit,
     private val onBack: () -> Unit,
 ) : ComponentContext by componentContext {
 
@@ -49,6 +51,7 @@ class IllustDetailComponent(
     val layout: StateFlow<FeedLayout> = prefs.feedLayout
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    private var loadJob: Job? = null
 
     val actions: FeedActionsController = FeedActionsController(
         likeStore = likeStore,
@@ -84,6 +87,7 @@ class IllustDetailComponent(
     fun back() = onBack()
     fun openViewer(index: Int) = onOpenViewer(illustId, index)
     fun openIllust(id: String) = onOpenIllust(id)
+    fun openTag(tag: String) = onOpenTagSearch(tag)
 
     fun toggleLike() {
         val current = _state.value.detail ?: return
@@ -116,7 +120,8 @@ class IllustDetailComponent(
     }
 
     private fun load() {
-        scope.launch {
+        loadJob?.cancel()
+        loadJob = scope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
             val detailRes = repo.detail(illustId)
             val pagesRes = repo.pages(illustId)

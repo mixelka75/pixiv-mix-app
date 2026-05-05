@@ -34,6 +34,14 @@ class IllustViewerComponent(
 
     init {
         lifecycle.doOnDestroy { scope.cancel() }
+        load()
+    }
+
+    fun back() = onBack()
+    fun retry() = load()
+
+    private fun load() {
+        _state.value = State(loading = true)
         scope.launch {
             val res = repo.pages(illustId)
             _state.value = res.fold(
@@ -42,6 +50,4 @@ class IllustViewerComponent(
             )
         }
     }
-
-    fun back() = onBack()
 }

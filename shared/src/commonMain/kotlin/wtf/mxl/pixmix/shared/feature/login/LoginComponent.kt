@@ -26,6 +26,7 @@ class LoginComponent(
         val mode: Mode = Mode.Form,
         val sessionInput: String = "",
         val error: String? = null,
+        val submitting: Boolean = false,
     )
 
     private val _state = MutableStateFlow(State())
@@ -64,9 +65,17 @@ class LoginComponent(
             return
         }
         val userId = raw.substringBefore('_')
+        if (userId.isBlank() || userId.toLongOrNull() == null) {
+            _state.value = _state.value.copy(error = "PHPSESSID must start with a numeric user id")
+            return
+        }
+        _state.value = _state.value.copy(submitting = true, error = null)
         scope.launch {
             cookies.seed("PHPSESSID", raw)
             sessionStore.save(raw, userId)
+            // submitting flag stays true until RootComponent.replaceAll(Main) tears
+            // down this component — visually that means the spinner stays under the
+            // user's finger right up to the screen transition.
         }
     }
 

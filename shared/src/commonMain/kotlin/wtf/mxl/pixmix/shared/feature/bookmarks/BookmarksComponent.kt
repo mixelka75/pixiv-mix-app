@@ -1,6 +1,7 @@
 package wtf.mxl.pixmix.shared.feature.bookmarks
 
 import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.essenty.backhandler.BackCallback
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,12 +27,15 @@ class BookmarksComponent(
     likeStore: LocalLikeStore,
     private val illustRepo: IllustRepository,
     imageDownloader: ImageDownloader,
-    prefs: UserPrefs,
+    private val prefs: UserPrefs,
     private val onOpenIllust: (String) -> Unit,
 ) : ComponentContext by componentContext {
 
     val data: StateFlow<LocalBookmarksData> = store.state
     val layout: StateFlow<FeedLayout> = prefs.feedLayout
+    val sort: StateFlow<wtf.mxl.pixmix.shared.prefs.BookmarkSort> = prefs.bookmarkSort
+
+    fun setSort(s: wtf.mxl.pixmix.shared.prefs.BookmarkSort) = prefs.setBookmarkSort(s)
 
     private val _selectedFolderId = MutableStateFlow<String?>(null)
     /** null = top-level folder list; otherwise the user is inside that folder. */
@@ -49,7 +53,13 @@ class BookmarksComponent(
 
     private val hydrating = mutableSetOf<String>()
 
+    /** Intercepts system back / swipe-back gesture so it pops out of the open folder
+     *  instead of bubbling up to the StackNavigation (which would jump to Home tab
+     *  / close the app). isEnabled flips with [_selectedFolderId]. */
+    private val folderBack = BackCallback(isEnabled = false) { back() }
+
     init {
+        backHandler.register(folderBack)
         lifecycle.doOnDestroy { scope.cancel() }
         hydrateMissing()
     }
@@ -94,11 +104,13 @@ class BookmarksComponent(
 
     fun openFolder(id: String) {
         _selectedFolderId.value = id
+        folderBack.isEnabled = true
         hydrateMissing()
     }
     fun back(): Boolean {
         if (_selectedFolderId.value == null) return false
         _selectedFolderId.value = null
+        folderBack.isEnabled = false
         return true
     }
 

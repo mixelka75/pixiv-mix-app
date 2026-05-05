@@ -28,11 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.prefs.ThemeMode
 
 @Composable
 fun SettingsScreen(component: SettingsComponent, modifier: Modifier = Modifier) {
     val layout by component.layout.collectAsState()
     val proxy by component.proxy.collectAsState()
+    val themeMode by component.themeMode.collectAsState()
 
     Column(
         modifier = modifier
@@ -69,6 +71,31 @@ fun SettingsScreen(component: SettingsComponent, modifier: Modifier = Modifier) 
                             )
                         },
                     ) { Text(opt.name) }
+                }
+            }
+        }
+
+        HorizontalDivider()
+
+        // ---- Theme ----
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Тема", style = MaterialTheme.typography.titleMedium)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ThemeMode.entries.forEachIndexed { index, opt ->
+                    SegmentedButton(
+                        selected = opt == themeMode,
+                        onClick = { component.setThemeMode(opt) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ThemeMode.entries.size,
+                        ),
+                    ) {
+                        Text(when (opt) {
+                            ThemeMode.System -> "Система"
+                            ThemeMode.Light -> "Светлая"
+                            ThemeMode.Dark -> "Тёмная"
+                        })
+                    }
                 }
             }
         }

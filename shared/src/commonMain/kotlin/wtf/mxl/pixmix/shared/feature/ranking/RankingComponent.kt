@@ -4,8 +4,11 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.essenty.lifecycle.doOnDestroy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,6 +60,7 @@ class RankingComponent(
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    private var loadJob: Job? = null
 
     val actions: FeedActionsController = FeedActionsController(
         likeStore = likeStore,
@@ -85,12 +89,21 @@ class RankingComponent(
         load(reset = false)
     }
 
+    fun refresh() {
+        _state.value = _state.value.copy(items = emptyList(), page = 1, endReached = false)
+        load(reset = true)
+    }
+
     private fun load(reset: Boolean) {
-        scope.launch {
+        loadJob?.cancel()
+        loadJob = scope.launch {
             val s = _state.value
             val nextPage = if (reset) 1 else s.page + 1
             _state.value = s.copy(loading = true, error = null)
             val res = repo.ranking(mode = s.period.wire, page = nextPage)
+            // Abort if period flipped mid-flight — otherwise old results merge into new period.
+            currentCoroutineContext().ensureActive()
+            if (_state.value.period != s.period) return@launch
             _state.value = res.fold(
                 onSuccess = { fresh ->
                     val merged = if (reset) fresh else s.items + fresh

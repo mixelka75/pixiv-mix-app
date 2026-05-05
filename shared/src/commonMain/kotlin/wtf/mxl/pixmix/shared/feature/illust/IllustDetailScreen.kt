@@ -25,18 +25,29 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.launch
+import wtf.mxl.pixmix.shared.ui.ErrorState
+import wtf.mxl.pixmix.shared.util.userMessage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,15 +68,31 @@ import wtf.mxl.pixmix.shared.ui.PixivImage
 fun IllustDetailScreen(component: IllustDetailComponent, modifier: Modifier = Modifier) {
     val state by component.state.collectAsState()
     val layout by component.layout.collectAsState()
+    val clipboard = LocalClipboardManager.current
+    val snackbarHost = remember { SnackbarHostState() }
+    val coScope = rememberCoroutineScope()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
                 title = { Text(state.detail?.title ?: "Loading…", maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = component::back) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (state.detail != null) {
+                        IconButton(onClick = {
+                            clipboard.setText(AnnotatedString(
+                                "https://www.pixiv.net/artworks/${state.detail!!.id}"
+                            ))
+                            coScope.launch { snackbarHost.showSnackbar("Ссылка скопирована") }
+                        }) {
+                            Icon(Icons.Filled.Link, contentDescription = "Скопировать ссылку")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -78,10 +105,10 @@ fun IllustDetailScreen(component: IllustDetailComponent, modifier: Modifier = Mo
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 when {
                     state.loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    state.error != null -> Text(
-                        "Error: ${state.error}",
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                        color = MaterialTheme.colorScheme.error,
+                    state.error != null -> ErrorState(
+                        message = "Не удалось загрузить пост:\n${userMessageOf(state.error)}",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = component::retry,
                     )
                     state.detail != null -> DetailContent(
                         detail = state.detail!!,
@@ -92,12 +119,18 @@ fun IllustDetailScreen(component: IllustDetailComponent, modifier: Modifier = Mo
                         loadingRelated = state.loadingRelated,
                         onPageClick = component::openViewer,
                         onRelatedClick = component::openIllust,
+                        onTagClick = component::openTag,
                         actions = actions,
                     )
                 }
             }
         }
     }
+}
+
+private fun userMessageOf(error: String?): String {
+    if (error.isNullOrBlank()) return "Неизвестная ошибка"
+    return runCatching { Throwable(error).userMessage() }.getOrDefault(error)
 }
 
 private fun IllustDetail.toSummary(): IllustSummary = IllustSummary(
@@ -124,6 +157,7 @@ private fun DetailContent(
     loadingRelated: Boolean,
     onPageClick: (Int) -> Unit,
     onRelatedClick: (String) -> Unit,
+    onTagClick: (String) -> Unit,
     actions: FeedActions,
 ) {
     LazyColumn(
@@ -137,12 +171,16 @@ private fun DetailContent(
                     .background(Color.Black)
                     .clickable { onPageClick(index) },
             ) {
+                // Use Modifier.aspectRatio so the image scales with the actual list width
+                // rather than a hardcoded 360 (which made desktop images comically small).
+                val ratio = (page.width.coerceAtLeast(1).toFloat() / page.height.coerceAtLeast(1))
+                    .coerceIn(0.3f, 3f)
                 PixivImage(
                     url = page.regularUrl,
                     contentDescription = detail.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(((page.height.toFloat() / page.width.coerceAtLeast(1)) * 360).dp.coerceAtMost(720.dp)),
+                        .aspectRatio(ratio),
                     contentScale = ContentScale.Fit,
                 )
             }
@@ -166,7 +204,10 @@ private fun DetailContent(
                     Spacer(Modifier.height(12.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(detail.tags) { tag ->
-                            AssistChip(onClick = {}, label = { Text("#$tag") })
+                            AssistChip(
+                                onClick = { onTagClick(tag) },
+                                label = { Text("#$tag") },
+                            )
                         }
                     }
                 }

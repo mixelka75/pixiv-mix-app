@@ -76,8 +76,10 @@ fun buildPixivHttpClient(
     // Doing cookies manually means proxy on/off is transparent: cookies are always stored
     // and matched against the canonical pixiv.net origin even when the wire host is the proxy.
     client.plugin(HttpSend).intercept { request ->
-        val pixivCookies = cookies.get(PixivHosts.PIXIV_REFERENCE_URL)
-        val cookieHeader = pixivCookies.joinToString("; ") { "${it.name}=${it.value}" }
+        // Hot path: every Coil image request hits this. Reading from a @Volatile
+        // pre-built string avoids the cookies mutex entirely on the request path —
+        // fixes scroll jank when many image requests run in parallel.
+        val cookieHeader = cookies.pixivCookieHeader()
         if (cookieHeader.isNotEmpty()) {
             request.headers.remove(HttpHeaders.Cookie)
             request.headers.append(HttpHeaders.Cookie, cookieHeader)

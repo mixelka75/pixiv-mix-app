@@ -80,7 +80,8 @@ fun IllustTileFeed(
             else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 9)
         }
     }
-    LaunchedEffect(prefetchRange, items) {
+    // Key only on prefetchRange — see comment in IllustFeed for why `items` is excluded.
+    LaunchedEffect(prefetchRange) {
         prefetchRange.forEach { idx ->
             if (idx in items.indices) {
                 val url = items[idx].thumbnailUrl.toMasterPreviewUrl()

@@ -51,15 +51,17 @@ class IllustRepository(
         if (env.error) error(env.message)
     }
 
-    /** Pixiv may reject a stale CSRF token. We retry once with a fresh one. */
-    private inline fun <T> withCsrfRetry(block: () -> T): Result<T> {
+    /** Pixiv may reject a stale CSRF token. We retry once with a fresh one. The block
+     *  invokes a suspend AJAX call; on the second pass [csrf.get] (called from
+     *  PixivAjaxApi) re-fetches a fresh token because invalidate cleared the cache. */
+    private suspend inline fun <T> withCsrfRetry(crossinline block: suspend () -> T): Result<T> {
         return try {
             Result.success(block())
         } catch (c: kotlinx.coroutines.CancellationException) {
             throw c
         } catch (first: Throwable) {
             csrf.invalidate()
-            wtf.mxl.pixmix.shared.util.runCoroutineCatching(block)
+            wtf.mxl.pixmix.shared.util.runCoroutineCatching { block() }
         }
     }
 }

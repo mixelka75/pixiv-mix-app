@@ -26,18 +26,37 @@ class PersistentCookiesStorage(
     private val mutex = Mutex()
     private val cookies: MutableList<StoredCookie> = load().toMutableList()
 
+    /** Pre-built `Cookie:` header value for the canonical pixiv origin. Coil fires
+     *  many parallel image requests; routing each through `mutex.withLock` to rebuild
+     *  this string was a measurable scroll-jank source on Android. We rebuild it only
+     *  on mutation. The `@Volatile` is a no-op on Kotlin/Js but keeps JVM/Native sane. */
+    @kotlin.concurrent.Volatile
+    private var pixivCookieHeaderCached: String = buildPixivCookieHeader()
+
     override suspend fun get(requestUrl: Url): List<Cookie> = mutex.withLock {
         cookies
             .filter { it.matches(requestUrl) }
             .map { it.toKtor() }
     }
 
+    /** Fast-path used by the HTTP interceptor — returns the pre-built `name=value; ...`
+     *  string for the canonical pixiv reference URL without entering the mutex. */
+    fun pixivCookieHeader(): String = pixivCookieHeaderCached
+
     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
         if (cookie.value.isBlank() && cookie.expires == null) return
         mutex.withLock {
-            cookies.removeAll { it.name == cookie.name && it.domain == effectiveDomain(cookie, requestUrl) }
+            val effDomain = effectiveDomain(cookie, requestUrl)
+            val effPath = cookie.path?.takeIf { it.isNotEmpty() } ?: "/"
+            // Pixiv issues multiple cookies with the same name but different paths
+            // (e.g. `/` vs `/users/`). Dedup must include the path or we collapse
+            // them and break per-path scoping.
+            cookies.removeAll {
+                it.name == cookie.name && it.domain == effDomain && it.path == effPath
+            }
             cookies += StoredCookie.from(cookie, requestUrl)
             persist()
+            pixivCookieHeaderCached = buildPixivCookieHeader()
         }
     }
 
@@ -54,10 +73,21 @@ class PersistentCookiesStorage(
     suspend fun clear() = mutex.withLock {
         cookies.clear()
         persist()
+        pixivCookieHeaderCached = ""
     }
 
     private fun persist() {
-        storage.putString(KEY_COOKIES, json.encodeToString(ListSerializer(StoredCookie.serializer()), cookies))
+        // Wrap in try/catch — on web `localStorage` throws QuotaExceededError when
+        // the 5MB quota is hit (pixiv rotates `__cf_bm` etc, the list grows over time).
+        // Dropping persistence is far better than crashing the app to a blank page.
+        runCatching {
+            storage.putString(KEY_COOKIES, json.encodeToString(ListSerializer(StoredCookie.serializer()), cookies))
+        }
+    }
+
+    private fun buildPixivCookieHeader(): String {
+        val ref = Url("https://www.$DOMAIN/")
+        return cookies.filter { it.matches(ref) }.joinToString("; ") { "${it.name}=${it.value}" }
     }
 
     private fun load(): List<StoredCookie> {

@@ -3,16 +3,21 @@ package wtf.mxl.pixmix.shared.feature.login
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +30,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.platform.WebViewHost
@@ -42,6 +49,7 @@ fun LoginScreen(component: LoginComponent, modifier: Modifier = Modifier) {
 
 @Composable
 private fun FormMode(component: LoginComponent, state: LoginComponent.State) {
+    val clipboard = LocalClipboardManager.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -76,15 +84,45 @@ private fun FormMode(component: LoginComponent, state: LoginComponent.State) {
             placeholder = { Text("e.g. 12345678_AbCdEf…") },
             singleLine = true,
             isError = state.error != null,
+            enabled = !state.submitting,
             supportingText = state.error?.let { msg -> { Text(msg, color = MaterialTheme.colorScheme.error) } },
+            trailingIcon = {
+                Row {
+                    if (state.sessionInput.isNotEmpty()) {
+                        IconButton(onClick = { component.setSessionInput("") }) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            clipboard.getText()?.text?.takeIf { it.isNotBlank() }?.let {
+                                component.setSessionInput(it.trim())
+                            }
+                        }) {
+                            Icon(Icons.Filled.ContentPaste, contentDescription = "Paste")
+                        }
+                    }
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
         )
         Button(
             onClick = component::submitSession,
             modifier = Modifier.fillMaxWidth(),
-            enabled = state.sessionInput.isNotBlank(),
+            enabled = state.sessionInput.isNotBlank() && !state.submitting,
         ) {
-            Text("Sign in")
+            if (state.submitting) {
+                // Inline spinner so the user sees their tap took effect; the button stays
+                // disabled until RootComponent.replaceAll(Main) tears down this screen.
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Spacer(Modifier.size(8.dp))
+                Text("Signing in…")
+            } else {
+                Text("Sign in")
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -94,6 +132,7 @@ private fun FormMode(component: LoginComponent, state: LoginComponent.State) {
         OutlinedButton(
             onClick = component::openBrowser,
             modifier = Modifier.fillMaxWidth(),
+            enabled = !state.submitting,
         ) {
             Text("Sign in via browser (WebView)")
         }
@@ -109,7 +148,7 @@ private fun FormMode(component: LoginComponent, state: LoginComponent.State) {
 private fun BrowserMode(component: LoginComponent) {
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(color = MaterialTheme.colorScheme.background) {
-            androidx.compose.foundation.layout.Row(
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -128,3 +167,6 @@ private fun BrowserMode(component: LoginComponent) {
         }
     }
 }
+
+@Suppress("unused")
+private val _annotatedStringHint: AnnotatedString = AnnotatedString("")

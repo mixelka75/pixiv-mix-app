@@ -88,7 +88,11 @@ fun IllustFeed(
             else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 10)
         }
     }
-    LaunchedEffect(prefetchRange, items) {
+    // Key only on prefetchRange — including `items` made the effect restart on every
+    // page-append (infinite scroll), re-enqueuing all 10 prefetch URLs from scratch.
+    // We read items[idx] inline; since the range only refers to indices ahead of the
+    // last visible item, items has already grown to cover those indices.
+    LaunchedEffect(prefetchRange) {
         prefetchRange.forEach { idx ->
             if (idx in items.indices) {
                 val url = items[idx].thumbnailUrl.toMasterPreviewUrl()

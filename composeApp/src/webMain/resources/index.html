@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1a1a1a" />
     <title>PixMix</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E0F12'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,Segoe UI,Roboto,sans-serif' font-weight='800' font-size='38' fill='%23FF7A00'%3EP%3C/text%3E%3C/svg%3E" />
     <style>
         /* Compose's wasm canvas measures itself against its container — without
            explicit 100% sizing on html/body the canvas comes up with 0 height
@@ -13,7 +14,10 @@
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100%;
+            height: 100vh;
+            /* dvh accounts for mobile browser chrome (URL bar) — without it the
+               bottom NavigationBar slides under the URL bar and becomes invisible. */
+            height: 100dvh;
             background: #1a1a1a;
             color: #f0f0f0;
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -22,6 +26,7 @@
         #pixmix-root {
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
         }
         /* Shown until the first compose composition finishes; Main.kt removes
            the node so it doesn't keep covering the rendered canvas. */

@@ -58,19 +58,25 @@ fun LayeredPixivImage(
     var fullFailed by remember(fullUrl) { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        AsyncImage(
-            model = placeholderUrl,
-            contentDescription = if (loadFullRes) null else contentDescription,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = contentScale,
-            onState = { state ->
-                when (state) {
-                    is AsyncImagePainter.State.Success -> placeholderReady = true
-                    is AsyncImagePainter.State.Error -> placeholderFailed = true
-                    else -> Unit
-                }
-            },
-        )
+        // Once the full-res image lands we stop drawing the placeholder. The
+        // placeholder is a square (toSmallSquareUrl) while the full image keeps the
+        // native aspect — with ContentScale.Fit the square would otherwise stay
+        // visible in the letterbox margins behind the (wider/taller) full image.
+        if (!(loadFullRes && fullReady)) {
+            AsyncImage(
+                model = placeholderUrl,
+                contentDescription = if (loadFullRes) null else contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+                onState = { state ->
+                    when (state) {
+                        is AsyncImagePainter.State.Success -> placeholderReady = true
+                        is AsyncImagePainter.State.Error -> placeholderFailed = true
+                        else -> Unit
+                    }
+                },
+            )
+        }
         if (loadFullRes) {
             AsyncImage(
                 model = fullUrl,

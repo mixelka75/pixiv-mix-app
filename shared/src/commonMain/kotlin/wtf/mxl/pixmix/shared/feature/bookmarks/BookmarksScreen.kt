@@ -17,9 +17,12 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import wtf.mxl.pixmix.shared.data.local.BookmarkFolder
 import wtf.mxl.pixmix.shared.data.local.LocalBookmarksData
+import wtf.mxl.pixmix.shared.prefs.BookmarkSort
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
 import wtf.mxl.pixmix.shared.ui.FeedActionsHost
 import wtf.mxl.pixmix.shared.ui.IllustFeed
@@ -62,6 +66,7 @@ fun BookmarksScreen(component: BookmarksComponent, modifier: Modifier = Modifier
     val openFolder = remember(data, selectedFolderId) {
         selectedFolderId?.let { id -> data.folders.firstOrNull { it.id == id } }
     }
+    val currentSort by component.sort.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -73,6 +78,11 @@ fun BookmarksScreen(component: BookmarksComponent, modifier: Modifier = Modifier
                         IconButton(onClick = { component.back() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                         }
+                    }
+                },
+                actions = {
+                    if (openFolder != null) {
+                        SortMenu(current = currentSort, onSelect = component::setSort)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -93,6 +103,7 @@ fun BookmarksScreen(component: BookmarksComponent, modifier: Modifier = Modifier
                     component = component,
                     folder = openFolder,
                     layout = layout,
+                    sort = currentSort,
                 )
             }
         }
@@ -227,9 +238,19 @@ private fun FolderContent(
     component: BookmarksComponent,
     folder: BookmarkFolder,
     layout: FeedLayout,
+    sort: BookmarkSort,
 ) {
     val data by component.data.collectAsState()
-    val items = remember(folder.id, data) { component.store.illustsInFolder(folder.id) }
+    val items = remember(folder.id, data, sort) {
+        val raw = component.store.illustsInFolder(folder.id)
+        when (sort) {
+            // illustsInFolder preserves underlying map insertion order — newest is last,
+            // oldest is first. Reverse for "newest first".
+            BookmarkSort.Newest -> raw.asReversed()
+            BookmarkSort.Oldest -> raw
+            BookmarkSort.Name -> raw.sortedBy { it.title.lowercase() }
+        }
+    }
     if (items.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -261,6 +282,36 @@ private fun FolderContent(
                         actions = actions,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SortMenu(current: BookmarkSort, onSelect: (BookmarkSort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Сортировка")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            BookmarkSort.entries.forEach { opt ->
+                DropdownMenuItem(
+                    text = {
+                        Text(when (opt) {
+                            BookmarkSort.Newest -> "Сначала новые"
+                            BookmarkSort.Oldest -> "Сначала старые"
+                            BookmarkSort.Name -> "По названию"
+                        })
+                    },
+                    onClick = {
+                        onSelect(opt)
+                        expanded = false
+                    },
+                    trailingIcon = if (opt == current) {
+                        { Text("●", color = MaterialTheme.colorScheme.primary) }
+                    } else null,
+                )
             }
         }
     }

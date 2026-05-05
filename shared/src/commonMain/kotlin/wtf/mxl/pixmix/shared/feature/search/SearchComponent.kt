@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +52,7 @@ class SearchComponent(
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var searchJob: Job? = null
+    private var debounceJob: Job? = null
 
     val actions: FeedActionsController = FeedActionsController(
         likeStore = likeStore,
@@ -65,6 +68,21 @@ class SearchComponent(
 
     fun setQuery(q: String) {
         _state.value = _state.value.copy(query = q)
+        // Debounced submit — wait 350ms after the last keystroke before firing the
+        // network call. submit() also cancels searchJob so an in-flight request from
+        // a previous query won't race with this one.
+        debounceJob?.cancel()
+        if (q.isBlank()) return
+        debounceJob = scope.launch {
+            delay(350)
+            submit()
+        }
+    }
+
+    fun clearQuery() {
+        debounceJob?.cancel()
+        searchJob?.cancel()
+        _state.value = _state.value.copy(query = "", items = emptyList(), error = null, page = 1)
     }
 
     fun setMode(m: FeedMode) {
@@ -79,6 +97,9 @@ class SearchComponent(
         searchJob = scope.launch {
             _state.value = s.copy(loading = true, error = null, items = emptyList(), page = 1)
             val res = repo.searchArtworks(s.query.trim(), page = 1, mode = s.mode)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            // Abort if a new query was submitted while we were waiting for the old one.
+            if (_state.value.query != s.query || _state.value.mode != s.mode) return@launch
             _state.value = res.fold(
                 onSuccess = { _state.value.copy(items = it, loading = false) },
                 onFailure = { _state.value.copy(error = it.message, loading = false) },
@@ -89,9 +110,15 @@ class SearchComponent(
     fun loadMore() {
         val s = _state.value
         if (s.loading || s.query.isBlank()) return
-        scope.launch {
+        // Track loadMore in the same searchJob so submit() cancels it — without this
+        // an in-flight loadMore can resume after submit() reset items and append page-2
+        // results onto the new (empty) state, breaking pagination.
+        searchJob?.cancel()
+        searchJob = scope.launch {
             _state.value = s.copy(loading = true)
             val res = repo.searchArtworks(s.query.trim(), page = s.page + 1, mode = s.mode)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (_state.value.query != s.query || _state.value.mode != s.mode) return@launch
             _state.value = res.fold(
                 onSuccess = { _state.value.copy(items = s.items + it, loading = false, page = s.page + 1) },
                 onFailure = { _state.value.copy(loading = false, error = it.message) },
@@ -100,4 +127,8 @@ class SearchComponent(
     }
 
     fun openIllust(id: String) = onOpenIllust(id)
+
+    fun refresh() {
+        if (_state.value.query.isNotBlank()) submit()
+    }
 }

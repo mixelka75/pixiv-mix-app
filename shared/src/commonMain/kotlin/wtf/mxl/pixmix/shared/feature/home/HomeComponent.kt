@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,8 +83,13 @@ class HomeComponent(
     fun refresh() = load(reset = true)
 
     fun logout() {
-        scope.launch { cookies.clear() }
-        sessionStore.clear()
+        // Order matters: clear cookies *before* sessionStore.clear() — sessionStore.clear()
+        // triggers the RootComponent to navigate to Login, and any in-flight request that
+        // races with the navigation must use cleared cookies, not the previous user's.
+        scope.launch {
+            cookies.clear()
+            sessionStore.clear()
+        }
     }
 
     private fun load(reset: Boolean) {
@@ -91,6 +98,10 @@ class HomeComponent(
             val current = _state.value
             _state.value = current.copy(loading = true, error = null)
             val result = discovery.discover(current.mode)
+            // If a setMode/refresh fired during the suspend, abort instead of stomping
+            // the new state with old-mode results.
+            currentCoroutineContext().ensureActive()
+            if (_state.value.mode != current.mode) return@launch
             _state.value = result.fold(
                 onSuccess = { fresh ->
                     val merged = if (reset) fresh else mergeUnique(current.items, fresh)

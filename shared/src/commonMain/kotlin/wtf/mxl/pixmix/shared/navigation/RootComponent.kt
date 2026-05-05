@@ -5,6 +5,7 @@ import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.childStack
 import com.arkivanov.decompose.router.stack.pop
+import com.arkivanov.decompose.router.stack.popWhile
 import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.value.Value
@@ -35,7 +36,10 @@ import wtf.mxl.pixmix.shared.feature.ranking.RankingComponent
 import wtf.mxl.pixmix.shared.feature.search.SearchComponent
 import wtf.mxl.pixmix.shared.feature.settings.SettingsComponent
 import wtf.mxl.pixmix.shared.network.cookies.PersistentCookiesStorage
+import wtf.mxl.pixmix.shared.prefs.ThemeMode
 import wtf.mxl.pixmix.shared.prefs.UserPrefs
+import wtf.mxl.pixmix.shared.feature.main.Tab
+import kotlinx.coroutines.flow.StateFlow
 
 class RootComponent(
     componentContext: ComponentContext,
@@ -52,6 +56,12 @@ class RootComponent(
 ) : ComponentContext by componentContext {
 
     private val nav = StackNavigation<Config>()
+
+    val themeMode: StateFlow<ThemeMode> = prefs.themeMode
+
+    /** Reference to the live MainTabsComponent. Used to drive cross-screen actions
+     *  (e.g. tag-click in IllustDetail jumps to Search tab inside Main). */
+    private var mainRef: MainTabsComponent? = null
 
     val stack: Value<ChildStack<*, Child>> = childStack(
         source = nav,
@@ -76,11 +86,23 @@ class RootComponent(
 
     private fun openIllust(id: String) = nav.push(Config.IllustDetail(id))
 
+    /** Pop everything above Main, switch to Search tab and submit the tag query. */
+    private fun openTagSearch(tag: String) {
+        nav.popWhile { it !is Config.Main }
+        mainRef?.let { main ->
+            main.select(Tab.Search)
+            main.search.setQuery(tag)
+            main.search.submit()
+        }
+    }
+
     private fun createChild(config: Config, ctx: ComponentContext): Child = when (config) {
         Config.Login -> Child.Login(LoginComponent(ctx, sessionStore, cookies))
 
         Config.Main -> Child.Main(
             MainTabsComponent(
+                // ↓ filled below; mainRef updated to point at the freshly built component
+                // so RootComponent.openTagSearch can drive it cross-screen.
                 componentContext = ctx,
                 homeFactory = { c ->
                     HomeComponent(
@@ -134,7 +156,7 @@ class RootComponent(
                 settingsFactory = { c ->
                     SettingsComponent(componentContext = c, prefs = prefs)
                 },
-            ),
+            ).also { mainRef = it },
         )
 
         is Config.IllustDetail -> Child.IllustDetail(
@@ -148,6 +170,7 @@ class RootComponent(
                 imageDownloader = imageDownloader,
                 onOpenViewer = { id, idx -> nav.push(Config.IllustViewer(id, idx)) },
                 onOpenIllust = ::openIllust,
+                onOpenTagSearch = ::openTagSearch,
                 onBack = { nav.pop() },
             ),
         )

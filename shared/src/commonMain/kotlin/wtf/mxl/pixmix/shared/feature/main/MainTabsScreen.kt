@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -100,12 +101,19 @@ private fun WideLayout(component: MainTabsComponent, selected: Tab) {
 
 @Composable
 private fun TabContent(component: MainTabsComponent, selected: Tab) {
-    when (selected) {
-        Tab.Home -> HomeScreen(component.home)
-        Tab.Search -> SearchScreen(component.search)
-        Tab.Bookmarks -> BookmarksScreen(component.bookmarks)
-        Tab.Ranking -> RankingScreen(component.ranking)
-        Tab.Settings -> SettingsScreen(component.settings)
+    // SaveableStateProvider scopes `rememberSaveable` (and therefore the LazyListState
+    // / LazyGridState that the feeds use under the hood) per-tab, so scroll position
+    // is preserved across tab switches. Without this, the only-currently-selected
+    // child enters/leaves composition and `rememberLazyListState()` resets to 0.
+    val stateHolder = rememberSaveableStateHolder()
+    stateHolder.SaveableStateProvider(selected.name) {
+        when (selected) {
+            Tab.Home -> HomeScreen(component.home)
+            Tab.Search -> SearchScreen(component.search)
+            Tab.Bookmarks -> BookmarksScreen(component.bookmarks)
+            Tab.Ranking -> RankingScreen(component.ranking)
+            Tab.Settings -> SettingsScreen(component.settings)
+        }
     }
 }
 

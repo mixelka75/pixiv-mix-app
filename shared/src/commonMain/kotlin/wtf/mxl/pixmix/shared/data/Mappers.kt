@@ -56,7 +56,11 @@ fun IllustDetailDto.toDomain(): IllustDetail = IllustDetail(
     commentCount = commentCount,
     author = AuthorSummary(id = userId, name = userName, avatarUrl = ""),
     tags = tags.tags.map { it.tag },
-    previewUrl = urls.regular.ifBlank { urls.small.ifBlank { urls.thumb } },
+    // For age-restricted illusts when not logged in, all three fields come back blank;
+    // fall back to pixiv's own placeholder so Coil doesn't fire requests against an
+    // empty URL (which the URL-rewriter then turns into a malformed `/c/360x360_70/` path).
+    previewUrl = urls.regular.ifBlank { urls.small.ifBlank { urls.thumb } }
+        .ifBlank { "https://s.pximg.net/common/images/limit_unknown_360.png" },
     regularUrl = urls.regular,
     originalUrl = urls.original,
     isLiked = likeData,

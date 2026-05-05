@@ -50,8 +50,14 @@ fun main() {
     val httpClient = koin.get<HttpClient>()
     SingletonImageLoader.setSafe { ctx: PlatformContext ->
         // No real disk filesystem on web — Coil's memory cache + the browser's own
-        // HTTP cache do the heavy lifting.
-        buildImageLoader(context = ctx, httpClient = httpClient)
+        // HTTP cache do the heavy lifting. Cap memory cache tightly so wasmJs heap
+        // doesn't accumulate decoded bitmaps during long feed scrolls (was visible
+        // as growing scroll lag after a minute of scrolling).
+        buildImageLoader(
+            context = ctx,
+            httpClient = httpClient,
+            memoryCacheMaxSizePercent = 0.10,
+        )
     }
 
     val lifecycle = LifecycleRegistry()
