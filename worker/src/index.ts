@@ -33,10 +33,15 @@ export interface Env {
 const PIXIV_HOST = "www.pixiv.net";
 const IMG_HOST = "i.pximg.net";
 
-const ALLOWED_HEADERS = [
+// Fallback list when the preflight didn't ask for anything specific. The actual
+// allow-list reflects whatever headers the browser requested (Ktor's JS engine
+// adds User-Agent and other unexpected ones, and chasing them one-by-one is a
+// losing game) — we still gate the request itself with X-Pixmix-Token below.
+const DEFAULT_ALLOWED_HEADERS = [
   "Content-Type",
   "Accept",
   "Accept-Language",
+  "User-Agent",
   "X-Pixmix-Token",
   "X-Pixmix-Cookie",
   "X-CSRF-Token",
@@ -168,10 +173,14 @@ function cors(res: Response, env: Env, req: Request): Response {
   }
   h.set("Access-Control-Allow-Credentials", "true");
   h.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  h.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+  // Echo whatever the browser asked for in the preflight — works around Ktor's
+  // JS engine setting headers (User-Agent etc.) the browser then treats as
+  // "non-simple". Falls back to a baseline list for non-preflight responses.
+  const requested = req.headers.get("Access-Control-Request-Headers");
+  h.set("Access-Control-Allow-Headers", requested || DEFAULT_ALLOWED_HEADERS);
   h.set("Access-Control-Expose-Headers", EXPOSED_HEADERS);
   h.set("Access-Control-Max-Age", "86400");
-  h.set("Vary", "Origin");
+  h.set("Vary", "Origin, Access-Control-Request-Headers");
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
