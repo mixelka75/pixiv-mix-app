@@ -57,8 +57,11 @@ fun IllustFeed(
     state: LazyListState = rememberLazyListState(),
     actions: FeedActions = FeedActions.Noop,
     /** Hi-res prefetch radius: cards within ±N of the visible window get the
-     *  full pixiv master1200 image; the rest stay on the cheap 360px placeholder. */
-    hiResRadius: Int = 3,
+     *  full pixiv master1200 image; the rest stay on the cheap 360px placeholder.
+     *  IllustFeed shows ~one card per viewport, so the radius needs to be generous —
+     *  otherwise fast scrolling outruns the prefetch and the user lands on the
+     *  small placeholder for several frames. */
+    hiResRadius: Int = 5,
 ) {
     if (onEndReached != null) {
         InfiniteScrollEffect(state = state, threshold = 4, onEndReached = onEndReached)
@@ -80,7 +83,9 @@ fun IllustFeed(
         derivedStateOf {
             val visible = state.layoutInfo.visibleItemsInfo
             if (visible.isEmpty()) IntRange.EMPTY
-            else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 5)
+            // Extend further than the hi-res window so the disk cache is warmed by the
+            // time the user scrolls these into the hi-res band.
+            else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 10)
         }
     }
     LaunchedEffect(prefetchRange, items) {

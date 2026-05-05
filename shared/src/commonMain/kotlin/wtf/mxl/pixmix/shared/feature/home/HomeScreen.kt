@@ -62,6 +62,7 @@ fun HomeScreen(component: HomeComponent, modifier: Modifier = Modifier) {
                             items = state.items,
                             onClick = component::openIllust,
                             onEndReached = component::loadMore,
+                            actions = actions,
                         )
                         FeedLayout.Feed -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                             if (maxWidth >= WIDE_FEED_BREAKPOINT) {

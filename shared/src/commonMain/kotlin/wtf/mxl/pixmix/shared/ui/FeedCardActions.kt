@@ -124,6 +124,36 @@ fun TileOverlayActions(
     }
 }
 
+/**
+ * Single-icon overlay used in dense layouts (grid cells) where only the bookmark
+ * action makes sense — the cell is too small for a full action row.
+ */
+@Composable
+fun BookmarkOverlayButton(
+    illust: IllustSummary,
+    actions: FeedActions,
+    modifier: Modifier = Modifier,
+) {
+    val bookmarked = actions.isBookmarked(illust.id)
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .size(32.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(Color(0x99000000)),
+    ) {
+        IconButton(
+            onClick = { actions.onBookmarkClick(illust) },
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                imageVector = if (bookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                contentDescription = "Bookmark",
+                tint = if (bookmarked) MaterialTheme.colorScheme.primary else Color.White,
+            )
+        }
+    }
+}
+
 @Composable
 private fun ActionIcon(
     icon: ImageVector,

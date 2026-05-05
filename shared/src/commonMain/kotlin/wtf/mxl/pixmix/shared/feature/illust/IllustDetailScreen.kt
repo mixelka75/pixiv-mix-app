@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
@@ -48,6 +49,8 @@ import wtf.mxl.pixmix.shared.domain.model.IllustPage
 import wtf.mxl.pixmix.shared.domain.model.IllustSummary
 import wtf.mxl.pixmix.shared.domain.model.XRestrict
 import wtf.mxl.pixmix.shared.prefs.FeedLayout
+import wtf.mxl.pixmix.shared.ui.FeedActions
+import wtf.mxl.pixmix.shared.ui.FeedActionsHost
 import wtf.mxl.pixmix.shared.ui.PixivImage
 
 @Composable
@@ -71,43 +74,57 @@ fun IllustDetailScreen(component: IllustDetailComponent, modifier: Modifier = Mo
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                state.error != null -> Text(
-                    "Error: ${state.error}",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
-                state.detail != null -> DetailContent(
-                    detail = state.detail!!,
-                    pages = state.pages,
-                    related = state.related,
-                    relatedLayout = layout,
-                    loadingRelated = state.loadingRelated,
-                    onPageClick = component::openViewer,
-                    onLike = component::toggleLike,
-                    onBookmark = { component.toggleBookmark(private = false) },
-                    onBookmarkPrivate = { component.toggleBookmark(private = true) },
-                    onRelatedClick = component::openIllust,
-                )
+        FeedActionsHost(controller = component.actions) { actions ->
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                when {
+                    state.loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    state.error != null -> Text(
+                        "Error: ${state.error}",
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    state.detail != null -> DetailContent(
+                        detail = state.detail!!,
+                        summary = component.toIllustSummary() ?: state.detail!!.toSummary(),
+                        pages = state.pages,
+                        related = state.related,
+                        relatedLayout = layout,
+                        loadingRelated = state.loadingRelated,
+                        onPageClick = component::openViewer,
+                        onRelatedClick = component::openIllust,
+                        actions = actions,
+                    )
+                }
             }
         }
     }
 }
 
+private fun IllustDetail.toSummary(): IllustSummary = IllustSummary(
+    id = id,
+    title = title,
+    kind = kind,
+    xRestrict = xRestrict,
+    width = width,
+    height = height,
+    pageCount = pageCount,
+    thumbnailUrl = previewUrl,
+    tags = tags,
+    author = author,
+    isMasked = false,
+)
+
 @Composable
 private fun DetailContent(
     detail: IllustDetail,
+    summary: IllustSummary,
     pages: List<IllustPage>,
     related: List<IllustSummary>,
     relatedLayout: FeedLayout,
     loadingRelated: Boolean,
     onPageClick: (Int) -> Unit,
-    onLike: () -> Unit,
-    onBookmark: () -> Unit,
-    onBookmarkPrivate: () -> Unit,
     onRelatedClick: (String) -> Unit,
+    actions: FeedActions,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -142,7 +159,7 @@ private fun DetailContent(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 )
                 Spacer(Modifier.height(12.dp))
-                ActionRow(detail, onLike, onBookmark, onBookmarkPrivate)
+                ActionRow(detail = detail, summary = summary, actions = actions)
                 Spacer(Modifier.height(12.dp))
                 StatsRow(detail)
                 if (detail.tags.isNotEmpty()) {
@@ -263,33 +280,32 @@ private fun MiniBadge(text: String, modifier: Modifier = Modifier) {
 @Composable
 private fun ActionRow(
     detail: IllustDetail,
-    onLike: () -> Unit,
-    onBookmark: () -> Unit,
-    onBookmarkPrivate: () -> Unit,
+    summary: IllustSummary,
+    actions: FeedActions,
 ) {
+    val liked = detail.isLiked || actions.isLiked(detail.id)
+    val bookmarked = detail.isBookmarked || actions.isBookmarked(detail.id)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconButton(onClick = onLike) {
+        IconButton(onClick = { actions.onLike(detail.id) }) {
             Icon(
-                imageVector = if (detail.isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = "Like",
-                tint = if (detail.isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
         }
-        IconButton(onClick = onBookmark) {
+        IconButton(onClick = { actions.onBookmarkClick(summary) }) {
             Icon(
-                imageVector = if (detail.isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                imageVector = if (bookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                 contentDescription = "Bookmark",
-                tint = if (detail.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                tint = if (bookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
         }
-        if (!detail.isBookmarked) {
-            IconButton(onClick = onBookmarkPrivate) {
-                Icon(
-                    imageVector = Icons.Filled.BookmarkBorder,
-                    contentDescription = "Private bookmark",
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                )
-            }
+        IconButton(onClick = { actions.onDownloadClick(summary, null) }) {
+            Icon(
+                imageVector = Icons.Filled.Download,
+                contentDescription = "Download",
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }

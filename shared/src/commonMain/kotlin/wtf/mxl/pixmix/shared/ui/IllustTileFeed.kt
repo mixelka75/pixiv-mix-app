@@ -153,6 +153,7 @@ private fun Tile(
                 contentDescription = illust.title,
                 contentScale = ContentScale.Crop,
                 loadFullRes = loadFullRes,
+                showLoadingBadge = false,
             )
         } else {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { i ->
@@ -162,6 +163,7 @@ private fun Tile(
                     contentDescription = illust.title,
                     contentScale = ContentScale.Crop,
                     loadFullRes = loadFullRes && i == pagerState.currentPage,
+                    showLoadingBadge = false,
                 )
             }
         }

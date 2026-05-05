@@ -43,6 +43,7 @@ fun IllustGrid(
     onEndReached: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(2.dp),
     state: LazyGridState = rememberLazyGridState(),
+    actions: FeedActions = FeedActions.Noop,
 ) {
     if (onEndReached != null) {
         GridInfiniteScrollEffect(state = state, threshold = 6, onEndReached = onEndReached)
@@ -58,13 +59,17 @@ fun IllustGrid(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items(items, key = { it.id }) { illust ->
-            IllustCell(illust = illust, onClick = { onClick(illust.id) })
+            IllustCell(illust = illust, actions = actions, onClick = { onClick(illust.id) })
         }
     }
 }
 
 @Composable
-private fun IllustCell(illust: IllustSummary, onClick: () -> Unit) {
+private fun IllustCell(
+    illust: IllustSummary,
+    actions: FeedActions,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -77,6 +82,11 @@ private fun IllustCell(illust: IllustSummary, onClick: () -> Unit) {
         if (illust.xRestrict == XRestrict.R18) Badge("R-18", Modifier.align(Alignment.TopStart))
         if (illust.xRestrict == XRestrict.R18G) Badge("R-18G", Modifier.align(Alignment.TopStart))
         if (illust.pageCount > 1) Badge("${illust.pageCount}", Modifier.align(Alignment.TopEnd))
+        BookmarkOverlayButton(
+            illust = illust,
+            actions = actions,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+        )
     }
 }
 

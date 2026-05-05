@@ -59,7 +59,14 @@ private fun CompactLayout(component: MainTabsComponent, selected: Tab) {
                         selected = selected == tab,
                         onClick = { component.select(tab) },
                         icon = { Icon(tab.icon(), contentDescription = tab.label()) },
-                        label = { Text(tab.label()) },
+                        label = {
+                            Text(
+                                tab.label(),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
                     )
                 }
             }
@@ -105,7 +112,7 @@ private fun TabContent(component: MainTabsComponent, selected: Tab) {
 private fun Tab.label(): String = when (this) {
     Tab.Home -> "Home"
     Tab.Search -> "Search"
-    Tab.Bookmarks -> "Bookmarks"
+    Tab.Bookmarks -> "Saved"
     Tab.Ranking -> "Ranking"
     Tab.Settings -> "Settings"
 }

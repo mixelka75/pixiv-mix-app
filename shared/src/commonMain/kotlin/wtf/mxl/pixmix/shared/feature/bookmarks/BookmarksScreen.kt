@@ -245,6 +245,7 @@ private fun FolderContent(
                 items = items,
                 onClick = component::openIllust,
                 onEndReached = null,
+                actions = actions,
             )
             FeedLayout.Feed -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 if (maxWidth >= WIDE_FEED_BREAKPOINT) {
