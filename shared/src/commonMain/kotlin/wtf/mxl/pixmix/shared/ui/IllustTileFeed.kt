@@ -57,7 +57,7 @@ fun IllustTileFeed(
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     actions: FeedActions = FeedActions.Noop,
-    hiResRadius: Int = 6,
+    hiResRadius: Int = FEED_HI_RES_RADIUS,
 ) {
     if (onEndReached != null) {
         StaggeredInfiniteScrollEffect(state = state, threshold = 8, onEndReached = onEndReached)
@@ -80,12 +80,15 @@ fun IllustTileFeed(
             else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 9)
         }
     }
-    // Key only on prefetchRange — see comment in IllustFeed for why `items` is excluded.
-    LaunchedEffect(prefetchRange) {
-        prefetchRange.forEach { idx ->
-            if (idx in items.indices) {
-                val url = items[idx].thumbnailUrl.toMasterPreviewUrl()
-                imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+    // Web disables prefetch entirely (see FeedTuning); on Android/Desktop the
+    // disk cache and OkHttp dedup absorb the request cost.
+    if (FEED_PREFETCH_ENABLED) {
+        LaunchedEffect(prefetchRange) {
+            prefetchRange.forEach { idx ->
+                if (idx in items.indices) {
+                    val url = items[idx].thumbnailUrl.toMasterPreviewUrl()
+                    imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+                }
             }
         }
     }

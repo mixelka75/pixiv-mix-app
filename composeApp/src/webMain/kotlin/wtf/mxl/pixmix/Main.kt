@@ -59,7 +59,7 @@ fun main() {
         buildImageLoader(
             context = ctx,
             httpClient = httpClient,
-            memoryCacheMaxSizeBytes = 128L * 1024 * 1024,
+            memoryCacheMaxSizeBytes = 256L * 1024 * 1024,
         )
     }
 

@@ -58,10 +58,10 @@ fun IllustFeed(
     actions: FeedActions = FeedActions.Noop,
     /** Hi-res prefetch radius: cards within ±N of the visible window get the
      *  full pixiv master1200 image; the rest stay on the cheap 360px placeholder.
-     *  IllustFeed shows ~one card per viewport, so the radius needs to be generous —
-     *  otherwise fast scrolling outruns the prefetch and the user lands on the
-     *  small placeholder for several frames. */
-    hiResRadius: Int = 5,
+     *  Default is platform-tuned (FEED_HI_RES_RADIUS) — generous on Android/Desktop
+     *  where there's a disk cache and OkHttp dedup, tight on web where each fetch
+     *  is a real network roundtrip and decoding eats the wasm main thread. */
+    hiResRadius: Int = FEED_HI_RES_RADIUS,
 ) {
     if (onEndReached != null) {
         InfiniteScrollEffect(state = state, threshold = 4, onEndReached = onEndReached)
@@ -88,15 +88,18 @@ fun IllustFeed(
             else (visible.last().index + hiResRadius + 1)..(visible.last().index + hiResRadius + 10)
         }
     }
-    // Key only on prefetchRange — including `items` made the effect restart on every
-    // page-append (infinite scroll), re-enqueuing all 10 prefetch URLs from scratch.
-    // We read items[idx] inline; since the range only refers to indices ahead of the
-    // last visible item, items has already grown to cover those indices.
-    LaunchedEffect(prefetchRange) {
-        prefetchRange.forEach { idx ->
-            if (idx in items.indices) {
-                val url = items[idx].thumbnailUrl.toMasterPreviewUrl()
-                imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+    // Skipped entirely on web — the prefetch fires more requests than Coil's
+    // memory cache and the browser's HTTP cache can dedupe (profile showed the
+    // same URL fetched 8× in parallel during 1 sec of scroll), saturating the
+    // wasm main thread with decode work. On Android/Desktop the disk cache and
+    // OkHttp dedup absorb the cost.
+    if (FEED_PREFETCH_ENABLED) {
+        LaunchedEffect(prefetchRange) {
+            prefetchRange.forEach { idx ->
+                if (idx in items.indices) {
+                    val url = items[idx].thumbnailUrl.toMasterPreviewUrl()
+                    imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+                }
             }
         }
     }

@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,8 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 
 /**
  * Two-pass image: shows a small thumbnail immediately as a placeholder, then loads the
@@ -56,6 +60,28 @@ fun LayeredPixivImage(
     var placeholderFailed by remember(placeholderUrl) { mutableStateOf(false) }
     var fullReady by remember(fullUrl) { mutableStateOf(false) }
     var fullFailed by remember(fullUrl) { mutableStateOf(false) }
+
+    // Fire-and-forget prewarm: kick off enqueue requests for both URLs and *don't*
+    // hold the Disposable. AsyncImage below cancels its own request via
+    // AbortController when it leaves composition (visible in profile as
+    // `io.ktor.client.fetch.abort_$external_fun` calls during scroll). An aborted
+    // fetch never lands in the browser HTTP cache, so every re-entry into viewport
+    // re-fetches from the network — observed as 14–18× requests per URL during
+    // 19 sec of scroll. By enqueueing here and discarding the Disposable, Coil's
+    // own scope keeps the request alive past the AsyncImage cancel; the response
+    // populates Coil memory cache so the next AsyncImage mount serves locally.
+    val context = LocalPlatformContext.current
+    val imageLoader = remember(context) { SingletonImageLoader.get(context) }
+    LaunchedEffect(placeholderUrl) {
+        if (placeholderUrl.isNotBlank()) {
+            imageLoader.enqueue(ImageRequest.Builder(context).data(placeholderUrl).build())
+        }
+    }
+    LaunchedEffect(fullUrl, loadFullRes) {
+        if (loadFullRes && fullUrl.isNotBlank()) {
+            imageLoader.enqueue(ImageRequest.Builder(context).data(fullUrl).build())
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         // Once the full-res image lands we stop drawing the placeholder. The
