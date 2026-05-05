@@ -7,13 +7,16 @@ import coil3.memory.MemoryCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import io.ktor.client.HttpClient
-import okio.FileSystem
-import okio.Path.Companion.toPath
 
+/**
+ * Disk-cache config is platform-specific: Android/Desktop set up an okio-backed cache
+ * under the user's app data dir; web has no real filesystem and skips the disk cache.
+ * Pass `diskCacheConfig = null` to disable it (the default).
+ */
 fun buildImageLoader(
     context: PlatformContext,
     httpClient: HttpClient,
-    diskCachePath: String,
+    diskCacheConfig: ((DiskCache.Builder) -> DiskCache)? = null,
 ): ImageLoader = ImageLoader.Builder(context)
     .components { add(KtorNetworkFetcherFactory(httpClient = httpClient)) }
     .crossfade(200)
@@ -22,11 +25,9 @@ fun buildImageLoader(
             .maxSizePercent(context, percent = 0.30)
             .build()
     }
-    .diskCache {
-        DiskCache.Builder()
-            .directory(diskCachePath.toPath())
-            .maxSizeBytes(256L * 1024 * 1024)
-            .fileSystem(FileSystem.SYSTEM)
-            .build()
+    .apply {
+        if (diskCacheConfig != null) {
+            diskCache { diskCacheConfig(DiskCache.Builder()) }
+        }
     }
     .build()

@@ -42,7 +42,13 @@ fun main() {
         buildImageLoader(
             context = ctx,
             httpClient = httpClient,
-            diskCachePath = cacheDir.absolutePath,
+            diskCacheConfig = { builder ->
+                builder
+                    .directory(okio.Path.Companion.run { cacheDir.absolutePath.toPath() })
+                    .maxSizeBytes(256L * 1024 * 1024)
+                    .fileSystem(okio.FileSystem.SYSTEM)
+                    .build()
+            },
         )
     }
 

@@ -5,6 +5,8 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import io.ktor.client.HttpClient
+import okio.FileSystem
+import okio.Path.Companion.toPath
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -25,10 +27,17 @@ class PixMixApplication : Application() {
         }
 
         SingletonImageLoader.setSafe { context: PlatformContext ->
+            val cacheDir = cacheDir.resolve("image_cache").absolutePath
             buildImageLoader(
                 context = context,
                 httpClient = httpClient,
-                diskCachePath = cacheDir.resolve("image_cache").absolutePath,
+                diskCacheConfig = { builder ->
+                    builder
+                        .directory(cacheDir.toPath())
+                        .maxSizeBytes(256L * 1024 * 1024)
+                        .fileSystem(FileSystem.SYSTEM)
+                        .build()
+                },
             )
         }
     }

@@ -12,6 +12,12 @@ kotlin {
     androidTarget()
     jvm("desktop")
 
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs("web") {
+        browser()
+        binaries.executable()
+    }
+
     sourceSets.all {
         languageSettings.optIn("androidx.compose.material3.ExperimentalMaterial3Api")
         languageSettings.optIn("androidx.compose.foundation.ExperimentalFoundationApi")
@@ -64,6 +70,11 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.swing)
+        }
+
+        val webMain by getting
+        webMain.dependencies {
+            implementation(libs.ktor.client.js)
         }
     }
 }
