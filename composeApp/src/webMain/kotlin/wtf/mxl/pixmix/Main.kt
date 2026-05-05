@@ -50,13 +50,16 @@ fun main() {
     val httpClient = koin.get<HttpClient>()
     SingletonImageLoader.setSafe { ctx: PlatformContext ->
         // No real disk filesystem on web — Coil's memory cache + the browser's own
-        // HTTP cache do the heavy lifting. Cap memory cache tightly so wasmJs heap
-        // doesn't accumulate decoded bitmaps during long feed scrolls (was visible
-        // as growing scroll lag after a minute of scrolling).
+        // HTTP cache do the heavy lifting. Use an explicit byte cap (not percent)
+        // because on wasmJs Coil cannot introspect process memory and resolves
+        // `maxSizePercent` to a tiny default, causing thrashing — Firefox profile
+        // showed identical URLs being fetched 14–18× during 19 sec of scroll because
+        // the cache evicted between scroll cycles. 128 MB holds ~25 master1200
+        // bitmaps comfortably while staying well under typical tab budgets.
         buildImageLoader(
             context = ctx,
             httpClient = httpClient,
-            memoryCacheMaxSizePercent = 0.10,
+            memoryCacheMaxSizeBytes = 128L * 1024 * 1024,
         )
     }
 

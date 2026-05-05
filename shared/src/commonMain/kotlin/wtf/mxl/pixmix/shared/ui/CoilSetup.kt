@@ -17,17 +17,26 @@ fun buildImageLoader(
     context: PlatformContext,
     httpClient: HttpClient,
     diskCacheConfig: ((DiskCache.Builder) -> DiskCache)? = null,
-    /** Fraction of available memory the in-memory bitmap cache may occupy. On wasmJs
-     *  there is no disk cache and decoded master1200 bitmaps are heavy (~5 MB each);
-     *  the default 0.30 lets the cache balloon during long scroll and triggers GC stalls. */
+    /** Fraction of available memory the in-memory bitmap cache may occupy on platforms
+     *  where Coil can introspect it (JVM/Android). Ignored when [memoryCacheMaxSizeBytes]
+     *  is non-null. */
     memoryCacheMaxSizePercent: Double = 0.30,
+    /** Hard byte cap on the in-memory bitmap cache. Use this on web (wasmJs) where
+     *  `maxSizePercent` cannot read process memory and may resolve to a tiny default,
+     *  causing thrashing — same image is decoded/fetched repeatedly during scroll
+     *  (observed in Firefox profile: identical URLs loaded 14–18× in 19 sec). */
+    memoryCacheMaxSizeBytes: Long? = null,
 ): ImageLoader = ImageLoader.Builder(context)
     .components { add(KtorNetworkFetcherFactory(httpClient = httpClient)) }
     .crossfade(200)
     .memoryCache {
-        MemoryCache.Builder()
-            .maxSizePercent(context, percent = memoryCacheMaxSizePercent)
-            .build()
+        val b = MemoryCache.Builder()
+        if (memoryCacheMaxSizeBytes != null) {
+            b.maxSizeBytes(memoryCacheMaxSizeBytes)
+        } else {
+            b.maxSizePercent(context, percent = memoryCacheMaxSizePercent)
+        }
+        b.build()
     }
     .apply {
         if (diskCacheConfig != null) {
