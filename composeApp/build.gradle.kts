@@ -65,8 +65,8 @@ android {
         applicationId = "wtf.mxl.pixmix"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "0.3.0"
+        versionCode = 5
+        versionName = "0.3.1"
     }
 
     signingConfigs {
@@ -117,7 +117,7 @@ compose.desktop {
             }
             targetFormats(*formats)
             packageName = "PixMix"
-            packageVersion = "0.3.0"
+            packageVersion = "0.3.1"
             linux {
                 iconFile.set(project.file("src/desktopMain/resources/icon.png"))
             }

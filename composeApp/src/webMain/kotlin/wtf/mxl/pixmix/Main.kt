@@ -9,6 +9,7 @@ import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import com.arkivanov.essenty.lifecycle.resume
 import io.ktor.client.HttpClient
 import kotlinx.browser.document
+import org.w3c.dom.HTMLElement
 import org.koin.core.context.startKoin
 import wtf.mxl.pixmix.shared.RootContent
 import wtf.mxl.pixmix.shared.auth.SessionStore
@@ -55,7 +56,13 @@ fun main() {
     )
     lifecycle.resume()
 
-    ComposeViewport(document.body!!) {
+    // Drop the static "Loading PixMix…" overlay now that the wasm bundle is in
+    // and Compose is about to mount. Leaving it in place would keep covering
+    // the canvas because it's a sibling of the root div, not a child.
+    document.getElementById("pixmix-loading")?.remove()
+
+    val root = document.getElementById("pixmix-root") as? HTMLElement ?: document.body!!
+    ComposeViewport(root) {
         RootContent(rootComponent)
     }
 }
