@@ -6,11 +6,13 @@
 <p align="center"><strong>English</strong> · <a href="README.ru.md">Русский</a></p>
 
 <p align="center">
-A clean, native pixiv client for Android, Windows, macOS and Linux.<br/>
+A clean, native pixiv client for Android, Windows, macOS, Linux — and the web.<br/>
 No ads, no web wrapper, no Electron — just your art feed.
 </p>
 
 <p align="center">
+  <a href="https://pixiv.mxl.wtf/"><strong>→ Open in browser</strong></a>
+  &nbsp;·&nbsp;
   <a href="https://github.com/mixelka75/pixiv-mix-app/releases/latest"><strong>↓ Download the latest release</strong></a>
 </p>
 
@@ -23,21 +25,30 @@ No ads, no web wrapper, no Electron — just your art feed.
 - **Adaptive layout** — phone-style nav on small windows, desktop sidebar on big ones, image grids that follow your window size.
 - **Snappy image loading** — full-resolution images preload around the viewport, so scrolling stays smooth.
 - **Likes & bookmarks** — works with your real pixiv account.
+- **Runs anywhere** — Android, Windows, macOS, Linux native, plus a Wasm build at [pixiv.mxl.wtf](https://pixiv.mxl.wtf/) with no install at all.
 - **Optional self-hosted proxy** — for users behind ISPs that throttle or block pixiv. See [Self-hosted proxy](#self-hosted-proxy-optional) below.
 
 ---
 
-## Install
+## Try it instantly
 
-Grab the file for your platform from the [latest release](https://github.com/mixelka75/pixiv-mix-app/releases/latest):
+Just open **<https://pixiv.mxl.wtf/>** in any modern browser — same UI as the native apps, runs as a Compose/Wasm bundle, no install, no extension, no account needed to browse.
+The web build always tracks the latest release.
+
+---
+
+## Install (native)
+
+Grab the file for your platform from the [latest release](https://github.com/mixelka75/pixiv-mix-app/releases/latest) (file names below are from `v0.4.2`; the version numbers in filenames change each release):
 
 | Platform | File | What to do |
 |---|---|---|
 | **Android** | `PixMix-release.apk` | Download to your phone, tap to install. May need *Allow install from unknown sources*. |
-| **Windows** | `PixMix-0.1.0.msi` | Double-click and follow the installer. |
-| **macOS** | `PixMix-1.0.0.dmg` | Open, drag PixMix.app to Applications. First launch: right-click → Open (unsigned app warning). |
-| **Linux (.deb)** | `pixmix_0.1.0-1_amd64.deb` | `sudo apt install ./pixmix_*.deb` — works on Debian/Ubuntu/Mint/Pop. |
+| **Windows** | `PixMix-*.msi` (or `.exe`) | Double-click and follow the installer. |
+| **macOS** | `PixMix-*.dmg` | Open, drag PixMix.app to Applications. First launch: right-click → Open (unsigned app warning). |
+| **Linux (.deb)** | `pixmix_*_amd64.deb` | `sudo apt install ./pixmix_*.deb` — works on Debian/Ubuntu/Mint/Pop. |
 | **Linux (AppImage)** | `PixMix-x86_64.AppImage` | `chmod +x PixMix-x86_64.AppImage && ./PixMix-x86_64.AppImage` — works on any distro. |
+| **Web** | — | Just open <https://pixiv.mxl.wtf/>. |
 
 ---
 
@@ -46,7 +57,7 @@ Grab the file for your platform from the [latest release](https://github.com/mix
 You sign in with your **own pixiv account** — PixMix never sees your credentials, the login goes to pixiv directly.
 
 - **Android**: tap *Sign in*, the in-app browser will open the pixiv login page. Sign in like usual.
-- **Desktop**: pixiv's WebView login is blocked by Google, so use one of:
+- **Desktop / Web**: pixiv's WebView login is blocked by Google, so use one of:
   - paste your `PHPSESSID` cookie (the login screen tells you how to grab it from pixiv.net), or
   - click *Open pixiv.net in browser*, sign in there, then come back and paste the cookie.
 
@@ -66,7 +77,7 @@ In the app: **Settings → Use proxy** → enter your URL + token. Your pixiv se
 
 ## Build from source / contribute
 
-PixMix is Kotlin Multiplatform (Android + JVM desktop) on top of Compose Multiplatform. Everything you need to set up the toolchain, run from sources, and ship a release is in **[DEVELOPMENT.md](DEVELOPMENT.md)**.
+PixMix is Kotlin Multiplatform (Android + JVM desktop + Wasm/JS) on top of Compose Multiplatform. Everything you need to set up the toolchain, run from sources, and ship a release is in **[DEVELOPMENT.md](DEVELOPMENT.md)**.
 
 ---
 

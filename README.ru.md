@@ -6,11 +6,13 @@
 <p align="center"><a href="README.md">English</a> · <strong>Русский</strong></p>
 
 <p align="center">
-Нативный клиент pixiv для Android, Windows, macOS и Linux.<br/>
+Нативный клиент pixiv для Android, Windows, macOS, Linux — и в браузере.<br/>
 Без рекламы, без обёрток над WebView, без Electron — только твоя лента.
 </p>
 
 <p align="center">
+  <a href="https://pixiv.mxl.wtf/"><strong>→ Открыть в браузере</strong></a>
+  &nbsp;·&nbsp;
   <a href="https://github.com/mixelka75/pixiv-mix-app/releases/latest"><strong>↓ Скачать последний релиз</strong></a>
 </p>
 
@@ -23,21 +25,30 @@
 - **Адаптивный интерфейс** — мобильная навигация на маленьких окнах, десктопный sidebar на больших, сетки сами подстраивают число колонок.
 - **Быстрая подгрузка картинок** — полный размер прелоадится рядом с экраном, прокрутка не лагает.
 - **Лайки и закладки** — работают с твоим аккаунтом pixiv.
+- **Работает везде** — Android, Windows, macOS, Linux нативно, плюс Wasm-сборка на [pixiv.mxl.wtf](https://pixiv.mxl.wtf/) — вообще без установки.
 - **Опциональный свой прокси** — если ISP режет pixiv. См. [раздел про прокси](#свой-прокси-опционально) ниже.
 
 ---
 
-## Установка
+## Попробовать сразу
 
-Качай файл под свою платформу из [последнего релиза](https://github.com/mixelka75/pixiv-mix-app/releases/latest):
+Открой **<https://pixiv.mxl.wtf/>** в любом современном браузере — тот же интерфейс, что в нативных приложениях, собран в Compose/Wasm. Без установки, без расширений, аккаунт нужен только если хочешь лайки и закладки.
+Веб-сборка всегда соответствует последнему релизу.
+
+---
+
+## Установка (нативно)
+
+Качай файл под свою платформу из [последнего релиза](https://github.com/mixelka75/pixiv-mix-app/releases/latest) (имена ниже от `v0.4.2`; цифры в имени файла меняются с каждым релизом):
 
 | Платформа | Файл | Что сделать |
 |---|---|---|
 | **Android** | `PixMix-release.apk` | Скачать на телефон, тапнуть. Возможно понадобится *Разрешить установку из неизвестных источников*. |
-| **Windows** | `PixMix-0.1.0.msi` | Двойной клик, дальше как обычный установщик. |
-| **macOS** | `PixMix-1.0.0.dmg` | Открыть, перетащить PixMix.app в Applications. Первый запуск: правый клик → *Открыть* (предупреждение о неподписанном приложении). |
-| **Linux (.deb)** | `pixmix_0.1.0-1_amd64.deb` | `sudo apt install ./pixmix_*.deb` — Debian/Ubuntu/Mint/Pop. |
+| **Windows** | `PixMix-*.msi` (или `.exe`) | Двойной клик, дальше как обычный установщик. |
+| **macOS** | `PixMix-*.dmg` | Открыть, перетащить PixMix.app в Applications. Первый запуск: правый клик → *Открыть* (предупреждение о неподписанном приложении). |
+| **Linux (.deb)** | `pixmix_*_amd64.deb` | `sudo apt install ./pixmix_*.deb` — Debian/Ubuntu/Mint/Pop. |
 | **Linux (AppImage)** | `PixMix-x86_64.AppImage` | `chmod +x PixMix-x86_64.AppImage && ./PixMix-x86_64.AppImage` — любой дистрибутив. |
+| **Web** | — | Просто открой <https://pixiv.mxl.wtf/>. |
 
 ---
 
@@ -46,7 +57,7 @@
 Логин идёт через **твой аккаунт pixiv** — PixMix не видит твоих паролей, авторизация уходит напрямую на pixiv.
 
 - **Android**: нажми *Войти*, откроется встроенный браузер с формой pixiv. Логинься как обычно.
-- **Desktop**: вход через WebView блокирует Google, поэтому два варианта:
+- **Desktop / Web**: вход через WebView блокирует Google, поэтому два варианта:
   - вставь свой `PHPSESSID` (экран логина подскажет, как достать его на pixiv.net), или
   - нажми *Открыть pixiv.net в браузере*, залогинься там, затем вставь куку обратно в приложение.
 
@@ -66,7 +77,7 @@
 
 ## Сборка из исходников / контрибьют
 
-PixMix это Kotlin Multiplatform (Android + JVM desktop) на Compose Multiplatform. Тулчейн, запуск из исходников, выпуск релиза — всё описано в **[DEVELOPMENT.ru.md](DEVELOPMENT.ru.md)**.
+PixMix это Kotlin Multiplatform (Android + JVM desktop + Wasm/JS) на Compose Multiplatform. Тулчейн, запуск из исходников, выпуск релиза — всё описано в **[DEVELOPMENT.ru.md](DEVELOPMENT.ru.md)**.
 
 ---
 
